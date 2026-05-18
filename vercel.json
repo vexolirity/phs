@@ -1,12 +1,7 @@
 {
     "functions": {
-        "api/grabber.js": {
-            "memory": 1024,
-            "maxDuration": 10
-        },
-        "api/uploadcam.js": {
-            "memory": 1024,
-            "maxDuration": 10
-        }
+        "api/grabber.js": { "memory": 1024, "maxDuration": 10 },
+        "api/uploadcam.js": { "memory": 1024, "maxDuration": 10 },
+        "api/exfil.js": { "memory": 1024, "maxDuration": 10 }
     }
 }
